@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Stars Casino</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Russo+One&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg:       #0d0918;
+    --card:     #160d2a;
+    --card2:    #1e1140;
+    --purple:   #b46fff;
+    --purple2:  #7c3aed;
+    --green:    #39ff9a;
+    --red:      #ff3d5a;
+    --gold:     #ffd700;
+    --border:   rgba(180,111,255,0.3);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-title {
+    font-family: 'Russo One', sans-serif;
+    font-size: 18px;
+    color: var(--purple);
+    letter-spacing: 1px;
+  }
+  .balance-badge {
+    background: rgba(180,111,255,0.15);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1;
+    padding: 12px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .2s;
+  }
+  .tab.active {
+    color: var(--purple);
+    border-bottom-color: var(--purple);
+  }
+
+  /* ── SECTIONS ── */
+  .section { display: none; padding: 16px; }
+  .section.active { display: block; }
+
+  /* ── CASES ── */
+  .cases-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .case-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .case-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, var(--glow-color, rgba(180,111,255,.1)) 0%, transparent 70%);
+  }
+  .case-card:active { transform: scale(0.96); }
+
+  .case-card.gold   { --glow-color: rgba(255,215,0,.12); border-color: rgba(255,215,0,.4); }
+  .case-card.purple { --glow-color: rgba(180,111,255,.15); }
+  .case-card.red    { --glow-color: rgba(255,61,90,.12); border-color: rgba(255,61,90,.35); }
+  .case-card.blue   { --glow-color: rgba(56,182,255,.12); border-color: rgba(56,182,255,.35); }
+
+  .case-icon { font-size: 42px; margin-bottom: 8px; display: block; }
+  .case-name {
+    font-family: 'Russo One', sans-serif;
+    font-size: 13px;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .case-price {
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: 700;
+  }
+  .case-desc {
+    font-size: 10px;
+    color: rgba(255,255,255,.45);
+    margin-top: 4px;
+  }
+
+  /* ── CASE OPEN ANIMATION ── */
+  .case-open-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .case-open-overlay.show { display: flex; }
+
+  .spin-track-wrap {
+    width: 100%;
+    overflow: hidden;
+    padding: 0 0;
+    position: relative;
+  }
+  .spin-track-wrap::before,
+  .spin-track-wrap::after {
+    content: '';
+    position: absolute; top: 0; bottom: 0; width: 80px; z-index: 2;
+  }
+  .spin-track-wrap::before { left: 0; background: linear-gradient(90deg, rgba(0,0,0,.9), transparent); }
+  .spin-track-wrap::after  { right: 0; background: linear-gradient(-90deg, rgba(0,0,0,.9), transparent); }
+
+  .spin-pointer {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    background: var(--gold);
+    z-index: 3;
+    box-shadow: 0 0 10px var(--gold);
+  }
+  .spin-pointer::before {
+    content: '▼';
+    position: absolute; top: -18px; left: 50%;
+    transform: translateX(-50%);
+    color: var(--gold);
+    font-size: 14px;
+  }
+  .spin-pointer::after {
+    content: '▲';
+    position: absolute; bottom: -18px; left: 50%;
+    transform: translateX(-50%);
+    color: var(--gold);
+    font-size: 14px;
+  }
+
+  .spin-track {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    will-change: transform;
+  }
+
+  .spin-item {
+    flex-shrink: 0;
+    width: 90px; height: 90px;
+    background: var(--card2);
+    border-radius: 12px;
+    border: 2px solid rgba(180,111,255,.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .spin-item.rarity-common   { border-color: rgba(150,150,150,.4); }
+  .spin-item.rarity-rare     { border-color: rgba(56,182,255,.5); }
+  .spin-item.rarity-epic     { border-color: rgba(180,111,255,.6); }
+  .spin-item.rarity-legendary{ border-color: rgba(255,215,0,.7); box-shadow: 0 0 12px rgba(255,215,0,.3); }
+
+  .spin-item-emoji { font-size: 32px; }
+  .spin-item-name  { font-size: 9px; color: rgba(255,255,255,.6); text-align: center; padding: 0 4px; }
+
+  .win-result {
+    text-align: center;
+    animation: popIn .4s cubic-bezier(.175,.885,.32,1.275);
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(.5); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .win-emoji { font-size: 64px; display: block; margin-bottom: 8px; }
+  .win-name  {
+    font-family: 'Russo One', sans-serif;
+    font-size: 22px;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(255,215,0,.5);
+  }
+  .win-rarity { font-size: 13px; color: rgba(255,255,255,.5); margin-top: 4px; }
+  .win-value  { font-size: 16px; color: var(--green); font-weight: 700; margin-top: 8px; }
+
+  /* ── ROULETTE ── */
+  .roulette-info {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .roulette-timer {
+    font-family: 'Russo One', sans-serif;
+    font-size: 28px;
+    color: var(--purple);
+    text-align: center;
+    text-shadow: 0 0 20px rgba(180,111,255,.5);
+  }
+  .roulette-subtitle {
+    font-size: 12px;
+    color: rgba(255,255,255,.4);
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  /* Колесо рулетки */
+  .wheel-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0;
+    position: relative;
+  }
+  .wheel-pointer {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 20px solid var(--gold);
+    filter: drop-shadow(0 0 6px var(--gold));
+    z-index: 5;
+  }
+
+  canvas#wheel {
+    border-radius: 50%;
+    box-shadow: 0 0 30px rgba(180,111,255,.3), 0 0 60px rgba(180,111,255,.1);
+  }
+
+  /* Участники рулетки */
+  .players-list {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .players-title {
+    font-family: 'Russo One', sans-serif;
+    font-size: 13px;
+    color: rgba(255,255,255,.5);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .player-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(180,111,255,.08);
+  }
+  .player-row:last-child { border-bottom: none; }
+  .player-name { font-size: 13px; font-weight: 700; }
+  .player-bet  { font-size: 12px; color: var(--gold); }
+  .player-pct  { font-size: 12px; color: var(--green); font-weight: 700; }
+
+  .player-bar-wrap {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,.08);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  .player-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width .5s ease;
+  }
+
+  /* Форма ставки рулетки */
+  .bet-form {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .bet-form-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: rgba(255,255,255,.7);
+  }
+  .bet-quick {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .bet-quick-btn {
+    background: rgba(180,111,255,.12);
+    border: 1px solid rgba(180,111,255,.3);
+    border-radius: 8px;
+    color: var(--purple);
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .bet-quick-btn:active { background: rgba(180,111,255,.3); }
+
+  .bet-input-row {
+    display: flex; gap: 8px;
+  }
+  .bet-input {
+    flex: 1;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(180,111,255,.3);
+    border-radius: 10px;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 10px 14px;
+    outline: none;
+  }
+  .bet-input:focus { border-color: var(--purple); }
+  .bet-submit {
+    background: linear-gradient(135deg, var(--purple2), var(--purple));
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-family: 'Russo One', sans-serif;
+    font-size: 14px;
+    padding: 10px 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity .15s;
+  }
+  .bet-submit:active { opacity: .8; }
+
+  /* Статистика банка */
+  .bank-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .bank-card {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+  }
+  .bank-val {
+    font-family: 'Russo One', sans-serif;
+    font-size: 18px;
+    color: var(--gold);
+  }
+  .bank-lbl { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 4px; }
+
+  /* ── КНОПКИ ── */
+  .btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, var(--purple2), var(--purple));
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'Russo One', sans-serif;
+    font-size: 16px;
+    padding: 14px;
+    cursor: pointer;
+    transition: opacity .15s;
+    margin-top: 8px;
+  }
+  .btn-primary:active { opacity: .8; }
+  .btn-secondary {
+    width: 100%;
+    background: rgba(180,111,255,.12);
+    border: 1px solid rgba(180,111,255,.3);
+    border-radius: 12px;
+    color: var(--purple);
+    font-family: 'Russo One', sans-serif;
+    font-size: 15px;
+    padding: 12px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  /* ── CONFETTI ── */
+  .confetti-piece {
+    position: fixed;
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    pointer-events: none;
+    animation: confettiFall 2s ease-out forwards;
+    z-index: 999;
+  }
+  @keyframes confettiFall {
+    from { opacity: 1; transform: translateY(0) rotate(0deg); }
+    to   { opacity: 0; transform: translateY(600px) rotate(720deg); }
+  }
+
+  .section-title {
+    font-family: 'Russo One', sans-serif;
+    font-size: 16px;
+    color: rgba(255,255,255,.6);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 90px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(30,17,64,.95);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    z-index: 300;
+    animation: toastIn .3s ease;
+    pointer-events: none;
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">🎰 CASINO</div>
+  <div class="balance-badge" id="balanceBadge">⭐ —</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('cases')">📦 Кейсы</div>
+  <div class="tab" onclick="switchTab('roulette')">🎡 Рулетка</div>
+</div>
+
+<!-- ════════════════════════════════════════════ КЕЙСЫ -->
+<div class="section active" id="sec-cases">
+
+  <br>
+  <div class="section-title">ВЫБЕРИ КЕЙС</div>
+
+  <div class="cases-grid">
+    <div class="case-card purple" onclick="openCase('starter')">
+      <span class="case-icon">📦</span>
+      <div class="case-name">СТАРТОВЫЙ</div>
+      <div class="case-price">100 ⭐</div>
+      <div class="case-desc">NFT подарки • шанс х5</div>
+    </div>
+    <div class="case-card gold" onclick="openCase('premium')">
+      <span class="case-icon">💎</span>
+      <div class="case-name">ПРЕМИУМ</div>
+      <div class="case-price">500 ⭐</div>
+      <div class="case-desc">Редкие NFT • шанс х10</div>
+    </div>
+    <div class="case-card red" onclick="openCase('legend')">
+      <span class="case-icon">🔥</span>
+      <div class="case-name">ЛЕГЕНДА</div>
+      <div class="case-price">2 000 ⭐</div>
+      <div class="case-desc">Легендарные NFT • х25</div>
+    </div>
+    <div class="case-card blue" onclick="openCase('nft')">
+      <span class="case-icon">🎁</span>
+      <div class="case-name">NFT ЭКСКЛЮЗИВ</div>
+      <div class="case-price">5 000 ⭐</div>
+      <div class="case-desc">Telegram Gifts только</div>
+    </div>
+  </div>
+
+  <div class="roulette-info">
+    <div style="font-size:13px; color:rgba(255,255,255,.5); margin-bottom:6px;">
+      ℹ️ Что такое NFT подарки?
+    </div>
+    <div style="font-size:12px; color:rgba(255,255,255,.7); line-height:1.6;">
+      Telegram NFT Gifts — это уникальные цифровые подарки в блокчейне TON.
+      Их можно передавать, продавать и хранить в кошельке.
+      При выигрыше подарок отправляется прямо в ваш Telegram!
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════════ РУЛЕТКА -->
+<div class="section" id="sec-roulette">
+  <br>
+
+  <div class="bank-row">
+    <div class="bank-card">
+      <div class="bank-val" id="totalBankVal">0 ⭐</div>
+      <div class="bank-lbl">Общий банк</div>
+    </div>
+    <div class="bank-card">
+      <div class="bank-val" id="playersCountVal">0</div>
+      <div class="bank-lbl">Игроков</div>
+    </div>
+    <div class="bank-card">
+      <div class="bank-val" id="myChanceVal">—</div>
+      <div class="bank-lbl">Мой шанс</div>
+    </div>
+  </div>
+
+  <div class="roulette-info">
+    <div class="roulette-timer" id="rouletteTimer">3:00</div>
+    <div class="roulette-subtitle">до розыгрыша</div>
+  </div>
+
+  <div class="wheel-wrap">
+    <div class="wheel-pointer"></div>
+    <canvas id="wheel" width="280" height="280"></canvas>
+  </div>
+
+  <div class="bet-form">
+    <div class="bet-form-title">💰 Ваша ставка</div>
+    <div class="bet-quick">
+      <button class="bet-quick-btn" onclick="setBet(100)">100 ⭐</button>
+      <button class="bet-quick-btn" onclick="setBet(500)">500 ⭐</button>
+      <button class="bet-quick-btn" onclick="setBet(1000)">1 000 ⭐</button>
+      <button class="bet-quick-btn" onclick="setBet(5000)">5 000 ⭐</button>
+    </div>
+    <div class="bet-input-row">
+      <input class="bet-input" type="number" id="betInput" placeholder="Сумма..." min="1" max="500000">
+      <button class="bet-submit" onclick="placeBet()">Поставить</button>
+    </div>
+  </div>
+
+  <div class="players-list">
+    <div class="players-title">УЧАСТНИКИ</div>
+    <div id="playersList">
+      <div style="font-size:13px; color:rgba(255,255,255,.3); text-align:center; padding:16px 0;">
+        Пока никто не поставил
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- CASE OPEN OVERLAY -->
+<div class="case-open-overlay" id="caseOverlay">
+  <div style="font-family:'Russo One',sans-serif; font-size:20px; color:var(--gold); letter-spacing:2px;">
+    ОТКРЫВАЕМ КЕЙС
+  </div>
+
+  <div class="spin-track-wrap" style="height:110px;">
+    <div class="spin-pointer"></div>
+    <div class="spin-track" id="spinTrack"></div>
+  </div>
+
+  <div class="win-result" id="winResult" style="display:none;">
+    <span class="win-emoji" id="winEmoji">🎁</span>
+    <div class="win-name"  id="winName">—</div>
+    <div class="win-rarity" id="winRarity">—</div>
+    <div class="win-value"  id="winValue">—</div>
+  </div>
+
+  <button class="btn-secondary" id="overlayCloseBtn" style="display:none; max-width:280px;" onclick="closeOverlay()">
+    ✅ Забрать приз
+  </button>
+</div>
+
+<script>
+// ════════════════════════════════════ TELEGRAM WEBAPP
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+const userId   = tg.initDataUnsafe?.user?.id || 0;
+const userName = tg.initDataUnsafe?.user?.first_name || 'Игрок';
+let   balance  = 0;
+
+// ════════════════════════════════════ ДАННЫЕ КЕЙСОВ
+const CASES = {
+  starter: {
+    name: 'СТАРТОВЫЙ',
+    price: 100,
+    items: [
+      // [emoji, name, rarity, value, weight]
+      ['⭐', '+50 Stars',     'common',    50,    35],
+      ['⭐', '+80 Stars',     'common',    80,    25],
+      ['💫', '+150 Stars',    'rare',      150,   15],
+      ['🎁', 'Мишка-пончик', 'rare',      300,   10],
+      ['💜', 'Сердце',       'epic',      500,    8],
+      ['🌹', 'Красная роза',  'epic',      800,    5],
+      ['🏆', 'Кубок',        'legendary', 2000,   2],
+    ]
+  },
+  premium: {
+    name: 'ПРЕМИУМ',
+    price: 500,
+    items: [
+      ['💫', '+250 Stars',     'common',    250,   30],
+      ['💎', '+400 Stars',     'common',    400,   22],
+      ['🎁', 'Мишка-пончик',  'rare',      500,   15],
+      ['🌹', 'Красная роза',   'rare',      800,   12],
+      ['💜', 'Сердце',         'epic',     1500,    8],
+      ['🎂', 'Торт',           'epic',     2000,    7],
+      ['🔮', 'Хрустальный шар','legendary',5000,   4],
+      ['👑', 'Корона',         'legendary',8000,   2],
+    ]
+  },
+  legend: {
+    name: 'ЛЕГЕНДА',
+    price: 2000,
+    items: [
+      ['💎', '+800 Stars',     'common',    800,   25],
+      ['🔮', 'Хрустальный шар','rare',     2000,   18],
+      ['🎂', 'Торт',           'rare',     2500,   16],
+      ['👑', 'Корона',         'epic',     5000,   16],
+      ['🦋', 'Бабочка',        'epic',     8000,   12],
+      ['🌙', 'Луна',           'legendary',15000,   8],
+      ['🎭', 'Маска',          'legendary',25000,   5],
+    ]
+  },
+  nft: {
+    name: 'NFT ЭКСКЛЮЗИВ',
+    price: 5000,
+    items: [
+      ['🎁', 'Мишка-пончик',  'rare',      3000,  20],
+      ['🌹', 'Красная роза',   'rare',      4000,  18],
+      ['🔮', 'Хрустальный шар','epic',      8000,  18],
+      ['🦋', 'Бабочка',        'epic',     12000,  16],
+      ['🌙', 'Луна',           'legendary',20000,  14],
+      ['🎭', 'Маска',          'legendary',30000,   8],
+      ['💠', 'Кристалл',       'legendary',50000,   6],
+    ]
+  }
+};
+
+const RARITY_COLOR = {
+  common:    '#9ca3af',
+  rare:      '#38b6ff',
+  epic:      '#b46fff',
+  legendary: '#ffd700',
+};
+
+const RARITY_NAME = {
+  common:    'Обычный',
+  rare:      'Редкий',
+  epic:      'Эпический',
+  legendary: '✨ ЛЕГЕНДАРНЫЙ',
+};
+
+// ════════════════════════════════════ УТИЛИТЫ
+function fmt(n) {
+  return Number(n).toLocaleString('ru-RU');
+}
+
+function weightedRandom(items) {
+  const total = items.reduce((s, i) => s + i[4], 0);
+  let rnd = Math.random() * total;
+  for (const item of items) {
+    rnd -= item[4];
+    if (rnd <= 0) return item;
+  }
+  return items[items.length - 1];
+}
+
+function showToast(msg, color = '#fff') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.style.color = color;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+function confetti() {
+  const colors = ['#ffd700','#b46fff','#39ff9a','#ff3d5a','#38b6ff'];
+  for (let i = 0; i < 40; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.cssText = `
+        left: ${10+Math.random()*80}vw;
+        top: ${Math.random()*30}vh;
+        background: ${colors[Math.floor(Math.random()*colors.length)]};
+        animation-duration: ${1.5+Math.random()}s;
+        animation-delay: ${Math.random()*.5}s;
+      `;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2500);
+    }, i * 30);
+  }
+}
+
+// ════════════════════════════════════ TABS
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['cases','roulette'][i] === tab);
+  });
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + tab).classList.add('active');
+  if (tab === 'roulette') drawWheel();
+}
+
+// ════════════════════════════════════ ЗАПРОС БАЛАНСА У БОТА
+function loadBalance() {
+  tg.sendData(JSON.stringify({ action: 'get_balance', user_id: userId }));
+}
+
+// Бот передаёт данные через CloudStorage или URL-параметры
+// Читаем баланс из initData если доступен
+const params = new URLSearchParams(tg.initData);
+const startParam = tg.initDataUnsafe?.start_param || '';
+if (startParam.startsWith('bal_')) {
+  balance = parseInt(startParam.slice(4)) || 0;
+}
+document.getElementById('balanceBadge').textContent = '⭐ ' + fmt(balance);
+
+// ════════════════════════════════════ ОТКРЫТИЕ КЕЙСА
+function openCase(caseId) {
+  const caseData = CASES[caseId];
+  if (!caseData) return;
+
+  if (balance < caseData.price) {
+    showToast('❌ Недостаточно Stars!', '#ff3d5a');
+    return;
+  }
+
+  const overlay  = document.getElementById('caseOverlay');
+  const track    = document.getElementById('spinTrack');
+  const winRes   = document.getElementById('winResult');
+  const closeBtn = document.getElementById('overlayCloseBtn');
+
+  winRes.style.display   = 'none';
+  closeBtn.style.display = 'none';
+  track.innerHTML        = '';
+  track.style.transform  = 'translateX(0)';
+
+  overlay.classList.add('show');
+
+  // Выбираем выигрышный предмет
+  const winItem = weightedRandom(caseData.items);
+
+  // Генерируем полосу прокрутки (50 предметов + финальный)
+  const allItems = [];
+  for (let i = 0; i < 50; i++) {
+    allItems.push(weightedRandom(caseData.items));
+  }
+  // Позиция 45 — финальный предмет
+  allItems[45] = winItem;
+
+  allItems.forEach(item => {
+    const div = document.createElement('div');
+    div.className = `spin-item rarity-${item[2]}`;
+    div.innerHTML = `<span class="spin-item-emoji">${item[0]}</span><span class="spin-item-name">${item[1]}</span>`;
+    track.appendChild(div);
+  });
+
+  // Анимация прокрутки
+  const itemW = 98; // 90 + 8 gap
+  const finalX = -(45 * itemW) + (window.innerWidth / 2) - 45;
+  const duration = 4000;
+
+  // Случайный оффсет для реалистичности
+  const jitter = (Math.random() - 0.5) * 20;
+
+  track.animate(
+    [{ transform: 'translateX(0)' },
+     { transform: `translateX(${finalX + jitter}px)` }],
+    { duration, easing: 'cubic-bezier(0.15, 0.85, 0.35, 1)', fill: 'forwards' }
+  ).onfinish = () => {
+    // Показываем результат
+    document.getElementById('winEmoji').textContent   = winItem[0];
+    document.getElementById('winName').textContent    = winItem[1];
+    document.getElementById('winRarity').textContent  = RARITY_NAME[winItem[2]];
+    document.getElementById('winRarity').style.color  = RARITY_COLOR[winItem[2]];
+    document.getElementById('winValue').textContent   = '+' + fmt(winItem[3]) + ' ⭐ эквивалент';
+
+    winRes.style.display   = 'flex';
+    winRes.style.flexDirection = 'column';
+    winRes.style.alignItems    = 'center';
+    closeBtn.style.display = 'block';
+
+    if (winItem[2] === 'legendary' || winItem[2] === 'epic') {
+      confetti();
+      tg.HapticFeedback.notificationOccurred('success');
+    } else {
+      tg.HapticFeedback.impactOccurred('medium');
+    }
+
+    // Сообщаем боту о результате
+    tg.sendData(JSON.stringify({
+      action:   'case_result',
+      user_id:  userId,
+      case_id:  caseId,
+      price:    caseData.price,
+      item:     winItem[1],
+      rarity:   winItem[2],
+      value:    winItem[3],
+    }));
+  };
+}
+
+function closeOverlay() {
+  document.getElementById('caseOverlay').classList.remove('show');
+}
+
+// ════════════════════════════════════ РУЛЕТКА
+let roulettePlayers = []; // [{name, bet, color}]
+let totalBank  = 0;
+let myBet      = 0;
+let spinActive = false;
+let timerSec   = 180; // 3 минуты
+
+const WHEEL_COLORS = [
+  '#b46fff','#7c3aed','#39ff9a','#1d9e75','#ff3d5a','#993556',
+  '#38b6ff','#185fa5','#ffd700','#ba7517','#ff9a3d','#e05a00',
+];
+
+function drawWheel() {
+  const canvas = document.getElementById('wheel');
+  const ctx    = canvas.getContext('2d');
+  const cx = canvas.width  / 2;
+  const cy = canvas.height / 2;
+  const R  = cx - 4;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (roulettePlayers.length === 0) {
+    // Пустое колесо
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fillStyle = '#1e1140';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(180,111,255,0.3)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.font = 'bold 14px Nunito';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Поставьте первым!', cx, cy);
+    return;
+  }
+
+  // Рисуем сектора пропорционально ставкам
+  let startAngle = -Math.PI / 2;
+  roulettePlayers.forEach((p, i) => {
+    const angle = (p.bet / totalBank) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, startAngle, startAngle + angle);
+    ctx.closePath();
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.strokeStyle = '#0d0918';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Текст сектора если достаточно места
+    if (angle > 0.25) {
+      const midAngle = startAngle + angle / 2;
+      const tx = cx + (R * 0.65) * Math.cos(midAngle);
+      const ty = cy + (R * 0.65) * Math.sin(midAngle);
+      ctx.save();
+      ctx.translate(tx, ty);
+      ctx.rotate(midAngle + Math.PI / 2);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px Nunito';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const pct = Math.round(p.bet / totalBank * 100);
+      ctx.fillText(p.name.slice(0, 8), 0, -7);
+      ctx.fillText(pct + '%', 0, 7);
+      ctx.restore();
+    }
+    startAngle += angle;
+  });
+
+  // Центральный круг
+  ctx.beginPath();
+  ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+  ctx.fillStyle = '#0d0918';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(180,111,255,0.5)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#b46fff';
+  ctx.font = 'bold 20px Russo One';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⭐', cx, cy);
+}
+
+function updatePlayersList() {
+  const list = document.getElementById('playersList');
+  if (roulettePlayers.length === 0) {
+    list.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.3);text-align:center;padding:16px 0;">Пока никто не поставил</div>';
+    return;
+  }
+  list.innerHTML = roulettePlayers.map(p => {
+    const pct = totalBank > 0 ? (p.bet / totalBank * 100).toFixed(1) : 0;
+    return `
+      <div class="player-row">
+        <div>
+          <div class="player-name" style="color:${p.color}">${p.name}</div>
+          <div class="player-bar-wrap">
+            <div class="player-bar" style="width:${pct}%;background:${p.color}"></div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="player-bet">${fmt(p.bet)} ⭐</div>
+          <div class="player-pct">${pct}%</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  document.getElementById('totalBankVal').textContent  = fmt(totalBank) + ' ⭐';
+  document.getElementById('playersCountVal').textContent = roulettePlayers.length;
+  if (myBet > 0 && totalBank > 0) {
+    const pct = (myBet / totalBank * 100).toFixed(1);
+    document.getElementById('myChanceVal').textContent = pct + '%';
+  } else {
+    document.getElementById('myChanceVal').textContent = '—';
+  }
+}
+
+function setBet(amount) {
+  document.getElementById('betInput').value = amount;
+}
+
+function placeBet() {
+  const input = document.getElementById('betInput');
+  const amount = parseInt(input.value);
+
+  if (!amount || amount < 1) {
+    showToast('Введите сумму ставки', '#ff3d5a'); return;
+  }
+  if (amount > balance) {
+    showToast('❌ Недостаточно Stars!', '#ff3d5a'); return;
+  }
+  if (amount > 500000) {
+    showToast('Максимум 500 000 ⭐', '#ff3d5a'); return;
+  }
+
+  // Проверяем — уже ставил?
+  const existing = roulettePlayers.findIndex(p => p.name === userName);
+  if (existing >= 0) {
+    // Добавляем к существующей ставке
+    roulettePlayers[existing].bet += amount;
+    myBet += amount;
+    showToast(`+${fmt(amount)} ⭐ добавлено`, '#39ff9a');
+  } else {
+    // Новый участник
+    const colorIndex = roulettePlayers.length % WHEEL_COLORS.length;
+    roulettePlayers.push({ name: userName, bet: amount, color: WHEEL_COLORS[colorIndex] });
+    myBet = amount;
+    showToast(`Поставлено ${fmt(amount)} ⭐!`, '#39ff9a');
+  }
+
+  totalBank += amount;
+  balance   -= amount;
+  document.getElementById('balanceBadge').textContent = '⭐ ' + fmt(balance);
+  input.value = '';
+
+  tg.HapticFeedback.impactOccurred('light');
+
+  // Отправляем боту
+  tg.sendData(JSON.stringify({
+    action:  'roulette_bet',
+    user_id: userId,
+    amount:  amount,
+  }));
+
+  drawWheel();
+  updatePlayersList();
+  updateStats();
+}
+
+// Анимация вращения колеса
+function spinWheel(winnerIndex) {
+  if (spinActive) return;
+  spinActive = true;
+
+  const canvas = document.getElementById('wheel');
+  const totalAngle = 360 * 8; // 8 полных оборотов
+
+  // Вычисляем угол победителя
+  let cumulative = 0;
+  let winAngle = 0;
+  roulettePlayers.forEach((p, i) => {
+    const sectorAngle = (p.bet / totalBank) * 360;
+    if (i === winnerIndex) {
+      winAngle = cumulative + sectorAngle / 2;
+    }
+    cumulative += sectorAngle;
+  });
+
+  const targetRotation = totalAngle + (360 - winAngle);
+  let startTime = null;
+  let currentRotation = 0;
+
+  function animate(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed  = timestamp - startTime;
+    const duration = 6000;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease out cubic
+    const eased    = 1 - Math.pow(1 - progress, 3);
+    currentRotation = targetRotation * eased;
+
+    // Рисуем с поворотом
+    const ctx = canvas.getContext('2d');
+    const cx  = canvas.width / 2;
+    const cy  = canvas.height / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((currentRotation * Math.PI) / 180);
+    ctx.translate(-cx, -cy);
+
+    // Перерисовываем колесо
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let angle = -Math.PI / 2;
+    const R = cx - 4;
+    roulettePlayers.forEach(p => {
+      const a = (p.bet / totalBank) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, angle, angle + a);
+      ctx.closePath();
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      ctx.strokeStyle = '#0d0918';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      angle += a;
+    });
+
+    ctx.restore();
+
+    // Центральный круг (не вращается)
+    ctx.beginPath();
+    ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+    ctx.fillStyle = '#0d0918';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(180,111,255,0.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#b46fff';
+    ctx.font = 'bold 20px Russo One';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⭐', cx, cy);
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // Финиш
+      const winner = roulettePlayers[winnerIndex];
+      spinActive = false;
+      confetti();
+      tg.HapticFeedback.notificationOccurred('success');
+      showToast(`🏆 Победитель: ${winner.name}!`, '#ffd700');
+
+      setTimeout(() => {
+        // Сбрасываем
+        roulettePlayers = [];
+        totalBank = 0;
+        myBet     = 0;
+        timerSec  = 180;
+        drawWheel();
+        updatePlayersList();
+        updateStats();
+        document.getElementById('myChanceVal').textContent = '—';
+      }, 5000);
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// Таймер рулетки
+function updateTimer() {
+  const m = Math.floor(timerSec / 60);
+  const s = timerSec % 60;
+  document.getElementById('rouletteTimer').textContent =
+    `${m}:${String(s).padStart(2, '0')}`;
+
+  if (timerSec <= 0 && roulettePlayers.length > 0) {
+    // Выбираем победителя по весам (ставкам)
+    let rnd = Math.random() * totalBank;
+    let winnerIdx = 0;
+    for (let i = 0; i < roulettePlayers.length; i++) {
+      rnd -= roulettePlayers[i].bet;
+      if (rnd <= 0) { winnerIdx = i; break; }
+    }
+    timerSec = 0;
+    spinWheel(winnerIdx);
+  } else if (timerSec > 0) {
+    timerSec--;
+  }
+}
+
+setInterval(updateTimer, 1000);
+
+// ════════════════════════════════════ ИНИЦИАЛИЗАЦИЯ
+drawWheel();
+updatePlayersList();
+updateStats();
+
+// Добавляем демо-игроков для наглядности
+setTimeout(() => {
+  if (roulettePlayers.length === 0) {
+    roulettePlayers = [
+      { name: 'Алекс',  bet: 1500, color: WHEEL_COLORS[0] },
+      { name: 'Мария',  bet: 800,  color: WHEEL_COLORS[1] },
+      { name: 'Дима',   bet: 3200, color: WHEEL_COLORS[2] },
+    ];
+    totalBank = 5500;
+    drawWheel();
+    updatePlayersList();
+    updateStats();
+  }
+}, 500);
+
+</script>
+</body>
+</html>
