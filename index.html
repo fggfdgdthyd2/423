@@ -572,9 +572,9 @@ canvas#crashCanvas{display:block;width:100%;height:180px;}
   <div class="taskc"><div class="tkhdr"><div class="tkname">Дневной оборот</div><div class="tkval" id="tk1v">0/500 ⭐</div></div><div class="tkbar"><div class="tkfill" id="tk1f" style="width:0%"></div></div></div>
   <div class="taskc"><div class="tkhdr"><div class="tkname">Ставки в разных играх</div><div class="tkval" id="tk2v">0/3</div></div><div class="tkbar"><div class="tkfill" id="tk2f" style="width:0%"></div></div></div>
   <div class="taskc"><div class="tkhdr"><div class="tkname">Крупные ставки (от 100 ⭐)</div><div class="tkval" id="tk3v">0/3</div></div><div class="tkbar"><div class="tkfill" id="tk3f" style="width:0%"></div></div></div>
-  <div class="stitle">РЕФЕРАЛЬНОЕ ЗАДАНИЕ</div>
-  <div class="taskc"><div class="tkhdr"><div class="tkname">🌸 Пригласи 10 друзей</div><div class="tkval" id="tk4v">0/10</div></div><div style="font-size:10px;color:var(--t3);margin-bottom:6px;">Получи <b style="color:var(--pur)">+150 🌸</b> за 10 рефералов по твоей ссылке</div><div class="tkbar"><div class="tkfill" style="background:linear-gradient(90deg,#7c3aed,var(--pur))" id="tk4f" style="width:0%"></div></div></div>
   <button class="taskbtn" id="tkBtn" disabled onclick="claimTask()">Выполни задания дня</button>
+  <div class="stitle">РЕФЕРАЛЬНОЕ ЗАДАНИЕ</div>
+  <div class="taskc"><div class="tkhdr"><div class="tkname">🌸 Пригласи 10 друзей</div><div class="tkval" id="tk4v" style="color:var(--pur)">0/10</div></div><div style="font-size:10px;color:var(--t3);margin-bottom:6px;">Получи <b style="color:var(--pur)">+150 🌸</b> за 10 рефералов по своей ссылке</div><div class="tkbar"><div class="tkfill" id="tk4f" style="width:0%;background:linear-gradient(90deg,#7c3aed,var(--pur))"></div></div></div>
   <div class="stitle">РУЛЕТКА</div>
   <div class="rstats">
     <div class="rstat"><div class="rsv" id="rBank">0 ⭐</div><div class="rsl">Общий банк</div></div>
@@ -679,7 +679,8 @@ const USERNAME=ME.username?'@'+ME.username:UNAME;
 function b64d(s){if(!s)return null;s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';try{return JSON.parse(atob(s));}catch(e){return null;}}
 const S=b64d(new URLSearchParams(window.location.search).get('d'))||{};
 let BAL=S.balance||0,PETS=S.petals||0,GAMES=S.games||0,WINS=S.wins||0,LOSS=S.losses||0;
-let REF_COUNT=S.ref_count||0; // реальное кол-во рефералов из БД
+let REF_COUNT=S.ref_count||0;
+const TOP_PLAYERS=S.top_players||[];
 let TOTAL_BET=S.total_bet||0,TOTAL_WIN=S.total_win||0;
 let SESSION_BET=0;
 let sessionGames={};
@@ -809,42 +810,31 @@ function updateMain(){
 }
 
 function updateTasks(){
-  // Задание 1: дневной оборот
   const overt=Math.min(SESSION_BET,500);
   const p1=Math.round(overt/500*100);
-  // Задание 2: разные игры
   const uniqueGames=Object.keys(sessionGames).length;
   const u=Math.min(uniqueGames,3);
   const p2=Math.round(u/3*100);
-  // Задание 3: крупные ставки
   const big=Math.min(bigBets,3);
   const p3=Math.round(big/3*100);
-  // Задание 4: рефералы (из данных БД через URL)
   const refs=Math.min(REF_COUNT,10);
   const p4=Math.round(refs/10*100);
-
   document.getElementById('tk1v').textContent=fmt(overt)+'/500 ⭐';
   document.getElementById('tk2v').textContent=u+'/3';
   document.getElementById('tk3v').textContent=big+'/3';
-  const tk4el=document.getElementById('tk4v');
-  if(tk4el)tk4el.textContent=refs+'/10';
+  const tk4=document.getElementById('tk4v');
+  if(tk4){tk4.textContent=refs+'/10';tk4.style.color=p4>=100?'var(--grn)':'var(--pur)';}
   setTimeout(()=>{
     document.getElementById('tk1f').style.width=p1+'%';
     document.getElementById('tk2f').style.width=p2+'%';
     document.getElementById('tk3f').style.width=p3+'%';
-    const tk4f=document.getElementById('tk4f');
-    if(tk4f)tk4f.style.width=p4+'%';
+    const tf4=document.getElementById('tk4f');
+    if(tf4)tf4.style.width=p4+'%';
   },200);
-  // Кнопка активна когда первые 3 задания выполнены
   const done=p1>=100&&p2>=100&&p3>=100;
   const btn=document.getElementById('tkBtn');
   btn.disabled=!done;
   btn.textContent=done?'🎁 Забрать награду!':'Выполни задания дня';
-  // Отдельная надпись для реф задания
-  if(p4>=100){
-    const tk4el2=document.getElementById('tk4v');
-    if(tk4el2)tk4el2.style.color='var(--grn)';
-  }
 }
 
 function updateSeason(){
