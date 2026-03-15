@@ -744,9 +744,57 @@ function confetti(){const col=['#ffd700','#00d4ff','#00ff88','#ff3355','#a855f7'
 function haptic(t='light'){try{tg.HapticFeedback.impactOccurred(t);}catch(e){}}
 function notif(t='success'){try{tg.HapticFeedback.notificationOccurred(t);}catch(e){}}
 // ═══ API: fetch к боту — НЕ закрывает приложение ════════════
-// Замени YOUR_SERVER_IP на IP сервера где запущен bot.py
-const API_URL = 'http://188.19.32.19:8080/api';
+// Домен Amvera вида https://<проект>-<юзер>.amvera.io — замени ниже
+const API_URL = 'https://casino-bot-fsadarefd.amvera.io/api';
 
+// Шлём запрос к серверу с подписью Telegram initData
+async function apiCall(data) {
+  try {
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Telegram-Init-Data': tg.initData || '',
+      },
+      body: JSON.stringify(data),
+    });
+    const json = await resp.json();
+    if (json.balance !== undefined) { BAL = json.balance; updateHdr(); }
+    if (json.petals  !== undefined) { PETS = json.petals; updateHdr(); }
+    return json;
+  } catch(e) {
+    console.error('apiCall error:', e);
+    return { ok: false };
+  }
+}
+
+// Загружаем свежие данные при старте (если ?d= устарел)
+async function syncState() {
+  try {
+    const resp = await fetch(API_URL.replace('/api', '/get_state'), {
+      method: 'GET',
+      headers: { 'X-Telegram-Init-Data': tg.initData || '' },
+    });
+    const json = await resp.json();
+    if (!json.ok) return;
+    BAL    = json.balance   ?? BAL;
+    PETS   = json.petals    ?? PETS;
+    GAMES  = json.games     ?? GAMES;
+    WINS   = json.wins      ?? WINS;
+    LOSS   = json.losses    ?? LOSS;
+    TOTAL_BET = json.total_bet ?? TOTAL_BET;
+    TOTAL_WIN = json.total_win ?? TOTAL_WIN;
+    // Рулетка
+    if (json.players)      rPlayers    = json.players;
+    if (json.total_bank !== undefined) rBank = json.total_bank;
+    if (json.seconds_left !== undefined) rSec = json.seconds_left;
+    if (json.my_bet !== undefined) rMyBet = json.my_bet;
+    if (json.my_pct !== undefined) rMyPct = json.my_pct;
+    updateHdr(); updateMain(); updateRouUI(); renderLeaders();
+  } catch(e) { console.warn('syncState failed:', e); }
+}
+
+// send() оставляем только как фоллбек (закрывает приложение — не используем)
 function send(d){try{tg.sendData(JSON.stringify(d));}catch(e){console.log('send err',e);}}
 function mb(id,m){const el=document.getElementById(id);el.value=Math.max(1,Math.floor((parseFloat(el.value)||10)*m));}
 function mx(id){document.getElementById(id).value=BAL;}
@@ -994,7 +1042,7 @@ function crashCash(){
   const profit=win-cBetAmt;
   toast('🎉 ×'+cMul.toFixed(2)+' → +'+fmt(profit)+' ⭐ чистыми','var(--grn)');
   notif('success');confetti();
-  send({action:'game_result',game:'crash',bet:cBetAmt,win:win,mult:cMul.toFixed(2)});
+  apiCall({action:'game_result',game:'crash',bet:cBetAmt,win:win,mult:cMul.toFixed(2)});
   recordGame(cBetAmt,win,'crash');
   cBetAmt=0;
   document.getElementById('cLive').classList.remove('show');
@@ -1019,7 +1067,7 @@ function crashBoom(){
   if(cBetAmt>0){
     toast('💥 Краш ×'+finalMul.toFixed(2)+'  −'+fmt(cBetAmt)+' ⭐','var(--red)');
     notif('error');
-    send({action:'game_result',game:'crash',bet:cBetAmt,win:0,mult:finalMul.toFixed(2)});
+    apiCall({action:'game_result',game:'crash',bet:cBetAmt,win:0,mult:finalMul.toFixed(2)});
     recordGame(cBetAmt,0,'crash');
     cBetAmt=0;
   }
@@ -1078,7 +1126,7 @@ function mClick(idx){
     document.getElementById('mStart').style.display='block';
     document.getElementById('mCash').style.display='none';
     toast('💥 Мина! −'+fmt(mBetAmt)+' ⭐','var(--red)');
-    send({action:'game_result',game:'mines',bet:mBetAmt,win:0});
+    apiCall({action:'game_result',game:'mines',bet:mBetAmt,win:0});
     recordGame(mBetAmt,0,'mines');
   }else{
     mCells[idx].el.className='mc revealed diamond';mFound++;calcMM();
@@ -1096,7 +1144,7 @@ function mCash(){
   if(profit>0)confetti();
   toast('💎 ×'+mult.toFixed(2)+' → '+(profit>0?'+':'')+fmt(profit)+' ⭐','var(--grn)');
   notif('success');
-  send({action:'game_result',game:'mines',bet:mBetAmt,win:win});
+  apiCall({action:'game_result',game:'mines',bet:mBetAmt,win:win});
   recordGame(mBetAmt,win,'mines');
 }
 
@@ -1147,7 +1195,7 @@ function dealBac(){
     const profit=win-bBetAmt;
     res.textContent=match?'🎉 ПОБЕДА! +'+(profit>0?fmt(profit):fmt(win))+' ⭐':'😔 Проигрыш −'+fmt(bBetAmt)+' ⭐';
     document.getElementById('bacBal').textContent=fmt(BAL)+' ⭐';
-    send({action:'game_result',game:'baccarat',bet:bBetAmt,win:match?win:0});
+    apiCall({action:'game_result',game:'baccarat',bet:bBetAmt,win:match?win:0});
     recordGame(bBetAmt,match?win:0,'baccarat');
   }
   setTimeout(startBTimer,4000);
@@ -1190,7 +1238,7 @@ function bjEnd(r){
   el.style.color=r==='win'?'var(--grn)':r==='push'?'var(--gld)':'var(--red)';el.textContent=msg;
   document.getElementById('bjActs').innerHTML='<button class="bja deal" onclick="resetBJ();bjDeal();" style="grid-column:1/-1;">СНОВА</button>';
   if(r!=='bust')notif(r==='win'?'success':'warning');else notif('error');
-  send({action:'game_result',game:'blackjack',bet:bjBt,win:r==='win'?win:r==='push'?bjBt:0});
+  apiCall({action:'game_result',game:'blackjack',bet:bjBt,win:r==='win'?win:r==='push'?bjBt:0});
   recordGame(bjBt,r==='win'?win:r==='push'?bjBt:0,'blackjack');
 }
 
@@ -1280,34 +1328,54 @@ function openCase(cid){
   const fxFinal=fx+(Math.random()-0.5)*30;
 
   strip.animate([{transform:'translateX(0)'},{transform:`translateX(${fxFinal}px)`}],
-    {duration:3800,easing:'cubic-bezier(0.12,0.85,0.3,1)',fill:'forwards'}).onfinish=()=>{
-    // Списываем баланс
-    BAL-=CP[cid];
-    // Если Stars-приз — начисляем на клиенте (бот синхронизирует при следующем открытии)
-    const isStars=wonItem.n.includes('Stars');
-    if(isStars) BAL+=wonItem.v;
-    updateHdr();
+    {duration:3800,easing:'cubic-bezier(0.12,0.85,0.3,1)',fill:'forwards'}).onfinish=async()=>{
 
-    // Показываем результат в overlay
+    // Запрашиваем настоящий результат у сервера
     ovT.textContent='';
-    const colMap={common:'var(--t2)',rare:'var(--acc)',epic:'var(--pur)',legendary:'var(--gld)'};
-    const itemCol=colMap[wonItem.r]||'var(--t1)';
-    document.getElementById('wE').textContent=wonItem.e;
-    document.getElementById('wN').textContent=wonItem.n;
-    document.getElementById('wN').style.color=itemCol;
-    document.getElementById('wR').textContent=RN[wonItem.r];
-    document.getElementById('wR').style.color=itemCol;
-    document.getElementById('wV').textContent=isStars?('+'+fmt(wonItem.v)+' ⭐ начислено'):'🎁 NFT будет отправлен ботом';
-    document.getElementById('wV').style.color=isStars?'var(--grn)':'var(--pur)';
-    wRes.style.display='flex';wRes.style.flexDirection='column';wRes.style.alignItems='center';
+    hint.textContent='⏳ Получаем результат...';
+
+    const res = await apiCall({action:'open_case', case_id:cid});
+
+    let displayItem = wonItem; // показываем то что анимировалось
+    if (res.ok && res.item) {
+      // Берём реальный результат с сервера
+      displayItem = {
+        e: res.item.emoji,
+        n: res.item.name,
+        r: res.item.rarity,
+        v: res.item.value,
+      };
+      // BAL и PETS уже обновились внутри apiCall()
+    } else if (!res.ok) {
+      // Если сервер вернул ошибку (например insufficient) — откатываем
+      toast(res.error === 'insufficient' ? '❌ Недостаточно Stars!' : '❌ Ошибка сервера', 'var(--red)');
+      ov.classList.remove('on');
+      return;
+    }
+
+    const isStars = displayItem.n.includes('Stars');
+    const colMap  = {common:'var(--t2)',rare:'var(--acc)',epic:'var(--pur)',legendary:'var(--gld)'};
+    const itemCol = colMap[displayItem.r] || 'var(--t1)';
+
+    document.getElementById('wE').textContent = displayItem.e;
+    document.getElementById('wN').textContent = displayItem.n;
+    document.getElementById('wN').style.color = itemCol;
+    document.getElementById('wR').textContent = RN[displayItem.r] || displayItem.r;
+    document.getElementById('wR').style.color = itemCol;
+
+    const net = isStars ? displayItem.v - CP[cid] : -CP[cid];
+    let valText = isStars
+      ? (net >= 0 ? '+'+fmt(displayItem.v)+' ⭐  (нетто '+( net>=0?'+':'')+fmt(net)+' ⭐)' : fmt(displayItem.v)+' ⭐  (нетто '+fmt(net)+' ⭐)')
+      : '🎁 NFT будет отправлен ботом';
+    document.getElementById('wV').textContent = valText;
+    document.getElementById('wV').style.color = (isStars && net >= 0) ? 'var(--grn)' : (isStars ? 'var(--red)' : 'var(--pur)');
+
+    wRes.style.display='flex'; wRes.style.flexDirection='column'; wRes.style.alignItems='center';
     cl.style.display='block';
-    hint.textContent='Бот подтвердит и зачтёт в статистику';
+    hint.textContent = '💰 Баланс: ' + fmt(BAL) + ' ⭐';
 
-    if(wonItem.r==='legendary'||wonItem.r==='epic')confetti();
-    notif(wonItem.r==='legendary'||wonItem.r==='epic'?'success':'warning');
-
-    // Отправляем боту для записи в БД
-    send({action:'open_case',case_id:cid});
+    if (displayItem.r==='legendary' || displayItem.r==='epic') confetti();
+    notif(displayItem.r==='legendary' || displayItem.r==='epic' ? 'success' : 'warning');
   };
 }
 function closeOv(){document.getElementById('cOv').classList.remove('on');}
@@ -1389,7 +1457,20 @@ function placeR(){
   rPlayers.forEach(p=>{p.pct=Math.round(p.bet/rBank*100*10)/10;});
   haptic('light');updateRouUI();
   toast('✅ Поставлено '+fmt(amt)+' ⭐','var(--grn)');
-  send({action:'roulette_bet',amount:amt});
+  apiCall({action:'roulette_bet',amount:amt}).then(res=>{
+    if(res.ok){
+      rMyBet=res.my_bet??rMyBet;
+      rMyPct=res.my_pct??rMyPct;
+      rBank=res.total_bank??rBank;
+      updateRouUI();
+    } else if(res.error==='insufficient'){
+      toast('❌ Недостаточно Stars!','var(--red)');
+      // откат локального состояния
+      rBank-=amt;
+      rPlayers.forEach(p=>{if(p.name===UNAME||p.name===USERNAME)p.bet-=amt;});
+      updateRouUI();
+    }
+  });
 }
 
 // ══════ РОЗЫГРЫШ 10K — реальные топ-игроки из БД
@@ -1419,6 +1500,8 @@ function renderLeaders(){
 
 // ══════ INIT
 updateHdr();updateMain();updateTasks();updateSeason();updateRouUI();renderLeaders();
+// Синхронизируем баланс с сервером при каждом открытии
+syncState();
 // Таймер для турнира — показываем реальный обратный отсчёт
 (function(){
   const el=document.getElementById('tTmr');
