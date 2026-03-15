@@ -747,20 +747,31 @@ function notif(t='success'){try{tg.HapticFeedback.notificationOccurred(t);}catch
 // Домен Amvera вида https://<проект>-<юзер>.amvera.io — замени ниже
 const API_URL = 'https://casino-bot-fsadarefd.amvera.io/api';
 
+// \u0417\u0430\u0433\u043e\u043b\u043e\u0432\u043a\u0438 \u2014 \u0432\u0441\u0435\u0433\u0434\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0451\u043c uid \u0434\u0432\u0443\u043c\u044f \u0441\u043f\u043e\u0441\u043e\u0431\u0430\u043c\u0438
+function _apiHeaders() {
+  return {
+    'Content-Type':         'application/json',
+    'X-Telegram-Init-Data': tg.initData || '',
+    'X-Telegram-User-Id':   String(ME.id || ''),
+    'X-Telegram-Username':  ME.first_name || ME.username || '\u0418\u0433\u0440\u043e\u043a',
+  };
+}
+
 // Шлём запрос к серверу с подписью Telegram initData
 async function apiCall(data) {
   try {
     const resp = await fetch(API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': tg.initData || '',
-      },
+      headers: _apiHeaders(),
       body: JSON.stringify(data),
     });
+    if (!resp.ok) {
+      console.error('apiCall HTTP error:', resp.status);
+      return { ok: false, error: 'http_' + resp.status };
+    }
     const json = await resp.json();
-    if (json.balance !== undefined) { BAL = json.balance; updateHdr(); }
-    if (json.petals  !== undefined) { PETS = json.petals; updateHdr(); }
+    if (json.balance !== undefined) { BAL  = json.balance; updateHdr(); }
+    if (json.petals  !== undefined) { PETS = json.petals;  updateHdr(); }
     return json;
   } catch(e) {
     console.error('apiCall error:', e);
@@ -773,7 +784,7 @@ async function syncState() {
   try {
     const resp = await fetch(API_URL.replace('/api', '/get_state'), {
       method: 'GET',
-      headers: { 'X-Telegram-Init-Data': tg.initData || '' },
+      headers: _apiHeaders(),
     });
     const json = await resp.json();
     if (!json.ok) return;
