@@ -678,12 +678,15 @@ function b64d(s){if(!s)return null;s=s.replace(/-/g,'+').replace(/_/g,'/');while
 const S=b64d(new URLSearchParams(window.location.search).get('d'))||{};
 let BAL=S.balance||0,PETS=S.petals||0,GAMES=S.games||0,WINS=S.wins||0,LOSS=S.losses||0;
 let TOTAL_BET=S.total_bet||0,TOTAL_WIN=S.total_win||0;
-let SESSION_BET=0; // ставки за текущую сессию (для дневного прогресса)
-let sessionGames={}; // {game_name: count} — уникальные игры
-let bigBets=0; // ставок >= 100 ⭐
+let SESSION_BET=0;
+let sessionGames={};
+let bigBets=0;
+// Рулетка — реальные данные из URL
 let rPlayers=S.players||[],rBank=S.total_bank||0,rSec=S.seconds_left||180,rMyBet=S.my_bet||0,rMyPct=S.my_pct||0;
+// Топ игроков для розыгрыша (из URL)
+const TOP_PLAYERS=S.top_players||[];
 
-// ══════ CASE DATA (with weights and values)
+// ══════ CASE DATA
 const CP={starter:100,premium:500,legend:2000,nft:5000};
 const CI={
   starter:[
@@ -754,7 +757,7 @@ function switchPage(p){
   document.querySelectorAll('.ni').forEach(e=>e.classList.remove('on'));
   document.getElementById('pg-'+p).classList.add('on');
   const ni=document.getElementById('n-'+p);if(ni)ni.classList.add('on');
-  if(p==='tasks')drawWheel();
+  if(p==='tasks'){drawWheel();renderRPlayers();}
 }
 function showGame(g){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));
@@ -770,7 +773,7 @@ function showGame(g){
 function backG(){switchPage('games');}
 function chipSel(el){document.querySelectorAll('.chip').forEach(e=>e.classList.remove('on'));el.classList.add('on');}
 
-// ══════ PROFILE
+// ══════ PROFILE — исправлена логика wins/losses
 function updateMain(){
   const rank=getRank(GAMES);
   document.getElementById('pName').textContent=USERNAME;
@@ -778,25 +781,21 @@ function updateMain(){
   document.getElementById('pBalTxt').textContent=fmt(BAL);
   document.getElementById('pPetTxt').textContent=PETS+' 🌸';
   document.getElementById('sBal').textContent=fmt(BAL);
-  document.getElementById('sGames').textContent=GAMES;
-  document.getElementById('sWins').textContent=WINS;
-  document.getElementById('sLosses').textContent=LOSS;
+  document.getElementById('sGames').textContent=fmt(GAMES);
+  document.getElementById('sWins').textContent=fmt(WINS);
+  document.getElementById('sLosses').textContent=fmt(LOSS);
   document.getElementById('sWr').textContent=GAMES>0?Math.round(WINS/GAMES*100)+'%':'0%';
   document.getElementById('sPets').textContent=PETS;
   document.getElementById('luckyTxt').textContent=LUCKY[Math.floor(Math.random()*LUCKY.length)];
-  // Показываем total_bet если есть элемент
   const sTotalBet=document.getElementById('sTotalBet');
   if(sTotalBet)sTotalBet.textContent=fmt(TOTAL_BET);
   const sProfit=document.getElementById('sProfit');
-  if(sProfit){sProfit.textContent=(TOTAL_WIN>=0?'+':'')+fmt(TOTAL_WIN);
-    sProfit.style.color=TOTAL_WIN>0?'var(--grn)':TOTAL_WIN<0?'var(--red)':'var(--t2)';}
-
-  // Прогрессы от реальных данных
-  // Дневной: поставлено за сессию / 500 ⭐
+  if(sProfit){
+    sProfit.textContent=(TOTAL_WIN>=0?'+':'')+fmt(TOTAL_WIN);
+    sProfit.style.color=TOTAL_WIN>0?'var(--grn)':TOTAL_WIN<0?'var(--red)':'var(--t2)';
+  }
   const dp=Math.min(100,Math.round(SESSION_BET/500*100));
-  // Недельный: количество игр / 30
   const wp=Math.min(100,Math.round(GAMES/30*100));
-  // Сезон XP: total_bet / 10000 (каждые 100⭐ ставок = 1% к сезону)
   const sp=Math.min(100,Math.round(TOTAL_BET/10000*100));
   setTimeout(()=>{
     [['Day',dp],['Week',wp],['Season',sp]].forEach(([k,v])=>{
@@ -805,20 +804,15 @@ function updateMain(){
     });
   },200);
 }
+
 function updateTasks(){
-  // Задание 1: дневной оборот — SESSION_BET за сессию
   const overt=Math.min(SESSION_BET,500);
   const p1=Math.round(overt/500*100);
-
-  // Задание 2: ставки в разных играх — уникальные игры за сессию
   const uniqueGames=Object.keys(sessionGames).length;
   const u=Math.min(uniqueGames,3);
   const p2=Math.round(u/3*100);
-
-  // Задание 3: крупные ставки — ставки >= 100 ⭐
   const big=Math.min(bigBets,3);
   const p3=Math.round(big/3*100);
-
   document.getElementById('tk1v').textContent=fmt(overt)+'/500 ⭐';
   document.getElementById('tk2v').textContent=u+'/3';
   document.getElementById('tk3v').textContent=big+'/3';
@@ -832,43 +826,44 @@ function updateTasks(){
   btn.disabled=!done;
   btn.textContent=done?'🎁 Забрать награду!':'Выполни задания дня';
 }
+
 function updateSeason(){
-  // XP = 1 XP за каждые 10 ⭐ поставленных
   const xp=Math.floor(TOTAL_BET/10);
   const xpTarget=500;
   document.getElementById('xpCur').textContent=xp+' XP';
   document.getElementById('xpMax').textContent='/ '+xpTarget+' XP';
   document.getElementById('xpFill').style.width=Math.min(100,xp/xpTarget*100)+'%';
-  document.getElementById('seGames').textContent=GAMES;
-  document.getElementById('seXP').textContent=xp;
+  document.getElementById('seGames').textContent=fmt(GAMES);
+  document.getElementById('seXP').textContent=fmt(xp);
   document.getElementById('seStreak').textContent=WINS>0?Math.min(WINS,7):0;
   document.getElementById('seTop').textContent=GAMES>0?'#'+Math.max(1,100-GAMES):'—';
 }
+
 function claimTask(){toast('🎁 Задания дня выполнены!','var(--grn)');notif('success');send({action:'claim_daily_tasks'});}
 function claimDaily(){toast('Используй /daily в чате бота','var(--grn)');}
 function openShop(){toast('Используй /shop в чате бота 🛒','var(--pur)');}
 
-function recordGame(bet,win){
-  // bet = списано с баланса ДО игры
-  // win = получено обратно (0 = полный проигрыш, bet = ничья, >bet = выигрыш)
+// recordGame — не трогает BAL, только статистику
+// bet = списано ДО игры, win = получено обратно
+function recordGame(bet,win,game){
   GAMES++;
-  if(win>bet){WINS++;}else if(win<bet&&win!==bet){LOSS++;}
-  // BAL уже был обновлён при списании ставки и зачислении выигрыша
-  // Здесь только считаем статистику
+  if(win>bet){WINS++;}else if(win<bet){LOSS++;}
   TOTAL_BET+=bet;
   if(win>bet)TOTAL_WIN+=(win-bet);
   SESSION_BET+=bet;
+  if(game)sessionGames[game]=(sessionGames[game]||0)+1;
+  if(bet>=100)bigBets++;
   updateHdr();updateMain();updateTasks();updateSeason();
 }
 
 // ══════════════════════════════════════════════
-// CRASH — полная реализация с canvas графиком
+// CRASH
 // ══════════════════════════════════════════════
-let cState='idle'; // idle | waiting | flying | dead
+let cState='idle';
 let cMul=1,cInc=0,cInt=null,cWaitInt=null,cBetAmt=0,cAutoOn=true;
-let cPoints=[],cNextIn=3; // точки графика, обратный отсчёт перед стартом
-let cHistory=[]; // история крашей
-let cBetting=false; // принимаем ли ставки
+let cPoints=[],cNextIn=5;
+let cHistory=[];
+let cBetting=false;
 
 function initCrash(){
   if(cState!=='idle')return;
@@ -896,7 +891,7 @@ function startCrashWait(){
 function startCrashFlight(){
   if(cState!=='waiting')return;
   cState='flying';cBetting=false;cMul=1.0;cPoints=[];
-  cInc=0.006+Math.random()*0.004; // случайный прирост
+  cInc=0.006+Math.random()*0.004;
   document.getElementById('cMult').className='crash-mult fly';
   document.getElementById('cSub').textContent='В ПОЛЁТЕ';
   if(cBetAmt>0){
@@ -905,7 +900,6 @@ function startCrashFlight(){
     document.getElementById('cLive').classList.add('show');
   }
   if(cInt)clearInterval(cInt);
-  // Генерируем точку краша заранее (честно)
   const crashAt=genCrashPoint();
   let elapsed=0;
   cInt=setInterval(()=>{
@@ -924,9 +918,8 @@ function startCrashFlight(){
 }
 
 function genCrashPoint(){
-  // Честная формула: E[crash] = ~2.0x
   const r=Math.random();
-  if(r<0.01)return 1.00; // 1% instacash
+  if(r<0.01)return 1.00;
   return Math.max(1.01, 0.99/(1-Math.random()*0.96));
 }
 
@@ -942,26 +935,22 @@ function renderCrashCanvas(){
   const maxY=Math.max(...cPoints.map(p=>p.y),2);
   const px=p=>p.x/maxX*(W-20)+10;
   const py=p=>180-10-(p.y-1)/(maxY-1+0.001)*(180-20);
-  // Grid
   ctx.strokeStyle='rgba(0,212,255,.06)';ctx.lineWidth=1;
   for(let i=1;i<=4;i++){
     const y=180-10-(i/4)*(180-20);
     ctx.beginPath();ctx.moveTo(10,y);ctx.lineTo(W-10,y);ctx.stroke();
   }
-  // Fill under line
   const col=cState==='dead'?'rgba(255,51,85,.12)':'rgba(0,255,136,.08)';
   ctx.beginPath();
   ctx.moveTo(px(cPoints[0]),180-10);
   cPoints.forEach(p=>ctx.lineTo(px(p),py(p)));
   ctx.lineTo(px(cPoints[cPoints.length-1]),180-10);
   ctx.closePath();ctx.fillStyle=col;ctx.fill();
-  // Line
   const lineCol=cState==='dead'?'#ff3355':'#00ff88';
   ctx.beginPath();ctx.strokeStyle=lineCol;ctx.lineWidth=2.5;
   ctx.shadowBlur=8;ctx.shadowColor=lineCol;
   cPoints.forEach((p,i)=>i===0?ctx.moveTo(px(p),py(p)):ctx.lineTo(px(p),py(p)));
   ctx.stroke();ctx.shadowBlur=0;
-  // Dot at end
   if(cPoints.length>0){
     const last=cPoints[cPoints.length-1];
     ctx.beginPath();ctx.arc(px(last),py(last),5,0,Math.PI*2);
@@ -971,9 +960,9 @@ function renderCrashCanvas(){
 
 function crashAct(){
   if(cState==='waiting'&&cBetting){
-    // Ставим
     const amt=parseInt(document.getElementById('cBet').value)||0;
-    if(!amt||amt<1||amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
+    if(!amt||amt<1){toast('Введите ставку','var(--red)');return;}
+    if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
     cBetAmt=amt;BAL-=amt;updateHdr();haptic('medium');
     document.getElementById('cBtn').textContent='СТАВКА ПРИНЯТА ✓';
     document.getElementById('cBtn').className='btn btn-dis';
@@ -982,7 +971,6 @@ function crashAct(){
   } else if(cState==='flying'&&cBetAmt>0){
     crashCash();
   } else if(cState==='idle'){
-    // Нет активного раунда — инициируем
     initCrash();
   }
 }
@@ -992,13 +980,11 @@ function crashCash(){
   const win=Math.floor(cBetAmt*cMul);
   BAL+=win;
   const profit=win-cBetAmt;
-  toast('🎉 Забрал ×'+cMul.toFixed(2)+' → +'+fmt(profit)+' ⭐ чистыми','var(--grn)');
-  notif('success');
-  sessionGames['crash']=(sessionGames['crash']||0)+1;
-  if(cBetAmt>=100)bigBets++;
+  toast('🎉 ×'+cMul.toFixed(2)+' → +'+fmt(profit)+' ⭐ чистыми','var(--grn)');
+  notif('success');confetti();
   send({action:'game_result',game:'crash',bet:cBetAmt,win:win,mult:cMul.toFixed(2)});
   recordGame(cBetAmt,win,'crash');
-  const b=cBetAmt;cBetAmt=0;
+  cBetAmt=0;
   document.getElementById('cLive').classList.remove('show');
   document.getElementById('cBtn').textContent='СТАВИТЬ';
   document.getElementById('cBtn').className='btn btn-g';
@@ -1013,7 +999,6 @@ function crashBoom(){
   document.getElementById('cMult').textContent=finalMul.toFixed(2)+'x';
   document.getElementById('cSub').textContent='💥 КРАШ!';
   document.getElementById('cLive').classList.remove('show');
-  // Добавляем в историю
   cHistory.unshift(finalMul);
   if(cHistory.length>12)cHistory.pop();
   renderCrashHistory();
@@ -1022,15 +1007,12 @@ function crashBoom(){
   if(cBetAmt>0){
     toast('💥 Краш ×'+finalMul.toFixed(2)+'  −'+fmt(cBetAmt)+' ⭐','var(--red)');
     notif('error');
-    sessionGames['crash']=(sessionGames['crash']||0)+1;
-    if(cBetAmt>=100)bigBets++;
     send({action:'game_result',game:'crash',bet:cBetAmt,win:0,mult:finalMul.toFixed(2)});
     recordGame(cBetAmt,0,'crash');
     cBetAmt=0;
   }
   document.getElementById('cBtn').textContent='СТАВИТЬ';
   document.getElementById('cBtn').className='btn btn-g';
-  // Через 3 сек запускаем новый раунд
   setTimeout(()=>{cState='idle';startCrashWait();},3000);
 }
 
@@ -1053,9 +1035,10 @@ let mActive=false,mCells=[],mCnt=2,mFound=0,mBetAmt=0,mMinePos=[];
 function selM(el,n){mCnt=n;document.querySelectorAll('.mcb').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');document.getElementById('mMines').textContent=n;document.getElementById('mDiamonds').textContent=25-n;calcMM();}
 function calcMM(){
   if(!mActive){document.getElementById('mNow').textContent='×1.00';document.getElementById('mNext').textContent='×'+((25-mCnt)/24).toFixed(2);return;}
-  const safe=25-mCnt,rem=safe-mFound;
+  const safe=25-mCnt;
   const mult=mFound===0?1:Math.max(1,(safe/25)*Math.pow(25/(25-mCnt),mFound));
-  const next=mult*(rem/(rem-1+(rem<=1?1:0)));
+  const rem=safe-mFound;
+  const next=rem>1?mult*(rem/(rem-1)):mult;
   document.getElementById('mNow').textContent='×'+mult.toFixed(2);
   document.getElementById('mNext').textContent='×'+Math.max(mult,next).toFixed(2);
   return mult;
@@ -1063,12 +1046,14 @@ function calcMM(){
 function buildMGrid(){const g=document.getElementById('mgrid');g.innerHTML='';mCells=[];for(let i=0;i<25;i++){const c=document.createElement('div');c.className='mc';c.onclick=()=>mClick(i);g.appendChild(c);mCells.push({el:c,open:false});}}
 function mStart(){
   const amt=parseInt(document.getElementById('mBet').value)||0;
-  if(!amt||amt<1||amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
+  if(!amt||amt<1){toast('Введите ставку','var(--red)');return;}
+  if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
   mBetAmt=amt;BAL-=amt;updateHdr();mActive=true;mFound=0;
   mMinePos=[];while(mMinePos.length<mCnt){const p=Math.floor(Math.random()*25);if(!mMinePos.includes(p))mMinePos.push(p);}
   buildMGrid();calcMM();
   document.getElementById('mStart').style.display='none';
   document.getElementById('mCash').style.display='block';
+  document.getElementById('mBal').textContent=fmt(BAL)+' ⭐';
   haptic('medium');toast('Игра! Мин скрыто: '+mCnt,'var(--acc)');
 }
 function mClick(idx){
@@ -1081,10 +1066,8 @@ function mClick(idx){
     document.getElementById('mStart').style.display='block';
     document.getElementById('mCash').style.display='none';
     toast('💥 Мина! −'+fmt(mBetAmt)+' ⭐','var(--red)');
-    sessionGames['mines']=(sessionGames['mines']||0)+1;
-    if(mBetAmt>=100)bigBets++;
-    recordGame(mBetAmt,0,'mines');
     send({action:'game_result',game:'mines',bet:mBetAmt,win:0});
+    recordGame(mBetAmt,0,'mines');
   }else{
     mCells[idx].el.className='mc revealed diamond';mFound++;calcMM();
     if(mFound===25-mCnt)mCash();
@@ -1097,13 +1080,12 @@ function mCash(){
   document.getElementById('mStart').style.display='block';
   document.getElementById('mCash').style.display='none';
   document.getElementById('mBal').textContent=fmt(BAL)+' ⭐';
-  const mProfit=win-mBetAmt;
-  toast('💎 ×'+mult.toFixed(2)+' → +'+fmt(mProfit)+' ⭐ чистыми','var(--grn)');
+  const profit=win-mBetAmt;
+  if(profit>0)confetti();
+  toast('💎 ×'+mult.toFixed(2)+' → '+(profit>0?'+':'')+fmt(profit)+' ⭐','var(--grn)');
   notif('success');
-  // win = mBetAmt*mult = полный возврат (ставка+профит)
-  // net_win = win - mBetAmt = чистый профит ✓
-  recordGame(mBetAmt,win);
   send({action:'game_result',game:'mines',bet:mBetAmt,win:win});
+  recordGame(mBetAmt,win,'mines');
 }
 
 // ══════ BACCARAT
@@ -1123,9 +1105,11 @@ function startBTimer(){
 }
 function bacBet(type){
   const amt=parseInt(document.getElementById('bacBet').value)||0;
-  if(!amt||amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
+  if(!amt||amt<1){toast('Введите ставку','var(--red)');return;}
+  if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
   if(bPhase!=='betting'){toast('Приём ставок закрыт','var(--red)');return;}
   bBetType=type;bBetAmt=amt;BAL-=amt;updateHdr();haptic('light');
+  document.getElementById('bacBal').textContent=fmt(BAL)+' ⭐';
   toast('Ставка: '+{player:'Игрок',banker:'Банкир',tie:'Ничья',ppair:'Пара Игрока',bpair:'Пара Банкира'}[type],'var(--acc)');
 }
 function dealBac(){
@@ -1145,17 +1129,14 @@ function dealBac(){
   if(bBetType){
     const match=(bBetType==='player'&&winner==='P')||(bBetType==='banker'&&winner==='B')||(bBetType==='tie'&&winner==='T')||(bBetType==='ppair'&&pc[0].slice(0,-1)===pc[1].slice(0,-1))||(bBetType==='bpair'&&bc[0].slice(0,-1)===bc[1].slice(0,-1));
     win=match?Math.floor(bBetAmt*bMults[bBetType]):0;
-    if(match){BAL+=win;notif('success');}else notif('error');
+    if(match){BAL+=win;notif('success');if(win-bBetAmt>0)confetti();}else notif('error');
     const res=document.getElementById('bRes');
     res.style.display='block';res.style.color=match?'var(--grn)':'var(--red)';
-    res.textContent=match?'🎉 ПОБЕДА! +'+fmt(win-bBetAmt)+' ⭐ чистыми':'😔 Проигрыш';
+    const profit=win-bBetAmt;
+    res.textContent=match?'🎉 ПОБЕДА! +'+(profit>0?fmt(profit):fmt(win))+' ⭐':'😔 Проигрыш −'+fmt(bBetAmt)+' ⭐';
     document.getElementById('bacBal').textContent=fmt(BAL)+' ⭐';
-    // win уже является полным возвратом (ставка * коэф)
-    // net_win в DB = win - bet = правильная прибыль
+    send({action:'game_result',game:'baccarat',bet:bBetAmt,win:match?win:0});
     recordGame(bBetAmt,match?win:0,'baccarat');
-    sessionGames['baccarat']=(sessionGames['baccarat']||0)+1;
-  if(bBetAmt>=100)bigBets++;
-  send({action:'game_result',game:'baccarat',bet:bBetAmt,win:win});
   }
   setTimeout(startBTimer,4000);
 }
@@ -1175,33 +1156,34 @@ function renderBJ(){
 function resetBJ(){bjPh='idle';bjP=[];bjD=[];document.getElementById('bjActs').innerHTML='<button class="bja deal" onclick="bjDeal()">РАЗДАТЬ</button>';document.getElementById('bjRes').style.display='none';renderBJ();}
 function bjDeal(){
   const amt=parseInt(document.getElementById('bjBet').value)||0;
-  if(!amt||amt<1||amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
+  if(!amt||amt<1){toast('Введите ставку','var(--red)');return;}
+  if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
   bjBt=amt;BAL-=amt;updateHdr();bjMkDk();
   bjP=[bjDk.pop(),bjDk.pop()];bjD=[bjDk.pop(),bjDk.pop()];bjPh='playing';renderBJ();haptic('medium');
+  document.getElementById('bjBal').textContent=fmt(BAL)+' ⭐';
   document.getElementById('bjActs').innerHTML='<button class="bja hit" onclick="bjHit()">✅ ВЗЯТЬ</button><button class="bja stand" onclick="bjStand()">🛑 ХВАТИТ</button>';
   document.getElementById('bjRes').style.display='none';
+  if(bjV(bjP)===21){toast('🌟 Blackjack!','var(--gld)');setTimeout(()=>bjStand(),800);}
 }
 function bjHit(){if(bjPh!=='playing')return;bjP.push(bjDk.pop());haptic('light');renderBJ();if(bjV(bjP)>21)bjEnd('bust');}
 function bjStand(){if(bjPh!=='playing')return;while(bjV(bjD)<17)bjD.push(bjDk.pop());bjPh='done';renderBJ();const ps=bjV(bjP),ds=bjV(bjD);if(ds>21||ps>ds)bjEnd('win');else if(ps===ds)bjEnd('push');else bjEnd('lose');}
 function bjEnd(r){
   bjPh='done';let win=0,msg='';
-  if(r==='bust'){msg='😔 Перебор!';}
-  else if(r==='win'){win=bjBt*2;BAL+=win;msg='🎉 ПОБЕДА! +'+fmt(bjBt)+' ⭐ чистыми';notif('success');}
-  else if(r==='push'){win=bjBt;BAL+=win;msg='😐 Ничья — возврат';}
+  if(r==='bust'){msg='😔 Перебор! −'+fmt(bjBt)+' ⭐';}
+  else if(r==='win'){win=bjBt*2;BAL+=win;msg='🎉 ПОБЕДА! +'+fmt(bjBt)+' ⭐ чистыми';notif('success');confetti();}
+  else if(r==='push'){win=bjBt;BAL+=win;msg='😐 Ничья — возврат '+fmt(bjBt)+' ⭐';}
   else{msg='😔 Проигрыш −'+fmt(bjBt)+' ⭐';}
   document.getElementById('bjBal').textContent=fmt(BAL)+' ⭐';
   const el=document.getElementById('bjRes');el.style.display='block';
   el.style.color=r==='win'?'var(--grn)':r==='push'?'var(--gld)':'var(--red)';el.textContent=msg;
   document.getElementById('bjActs').innerHTML='<button class="bja deal" onclick="resetBJ();bjDeal();" style="grid-column:1/-1;">СНОВА</button>';
   if(r!=='bust')notif(r==='win'?'success':'warning');else notif('error');
-  recordGame(bjBt,r==='win'?win:r==='push'?bjBt:0);
-  sessionGames['blackjack']=(sessionGames['blackjack']||0)+1;
-  if(bjBt>=100)bigBets++;
   send({action:'game_result',game:'blackjack',bet:bjBt,win:r==='win'?win:r==='push'?bjBt:0});
+  recordGame(bjBt,r==='win'?win:r==='push'?bjBt:0,'blackjack');
 }
 
 // ══════════════════════════════════════════════
-// CASE DETAIL — просмотр содержимого кейса
+// CASE DETAIL
 // ══════════════════════════════════════════════
 let currentCaseId='starter';
 
@@ -1210,16 +1192,12 @@ function showCaseDetail(cid){
   const info=CINFO[cid];
   const items=CI[cid];
   const totalW=items.reduce((s,i)=>s+i.w,0);
-
   document.getElementById('cdTitle').textContent=info.name;
   document.getElementById('cdIco').textContent=info.ico;
   document.getElementById('cdName').textContent=info.name+' КЕЙС';
   document.getElementById('cdPrice').textContent=fmt(info.price)+' ⭐';
-
-  // Сортируем по редкости: legendary → epic → rare → common
   const order={legendary:0,epic:1,rare:2,common:3};
   const sorted=[...items].sort((a,b)=>order[a.r]-order[b.r]);
-
   document.getElementById('cdItems').innerHTML=sorted.map(item=>{
     const pct=(item.w/totalW*100).toFixed(1);
     const col=RC[item.r];
@@ -1237,7 +1215,6 @@ function showCaseDetail(cid){
       </div>
     </div>`;
   }).join('');
-
   document.getElementById('cdOv').classList.add('on');
   haptic('light');
 }
@@ -1251,7 +1228,14 @@ function closeCaseDetail(){
   document.getElementById('cdOv').classList.remove('on');
 }
 
-// ══════ CASE OPEN
+// ══════ CASE OPEN — результат показывается сразу в overlay
+function _weightedPick(items){
+  const totalW=items.reduce((s,i)=>s+i.w,0);
+  let r=Math.random()*totalW;
+  for(const item of items){r-=item.w;if(r<=0)return item;}
+  return items[items.length-1];
+}
+
 function openCase(cid){
   if(BAL<CP[cid]){toast('❌ Нужно '+fmt(CP[cid])+' ⭐','var(--red)');return;}
   const ov=document.getElementById('cOv'),strip=document.getElementById('strip'),
@@ -1259,26 +1243,64 @@ function openCase(cid){
         ovT=document.getElementById('ovT'),hint=document.getElementById('ovHint');
   strip.innerHTML='';strip.style.transform='translateX(0)';
   wRes.style.display='none';cl.style.display='none';
-  ovT.textContent='ОТКРЫВАЕМ КЕЙС';hint.textContent='Бот подтвердит результат в чате';
+  ovT.textContent='ОТКРЫВАЕМ КЕЙС';hint.textContent='';
   ov.classList.add('on');haptic('medium');
+
+  // Выбираем реальный приз заранее (на клиенте для показа; бот пересчитает независимо)
   const items=CI[cid];
-  for(let i=0;i<52;i++){const it=items[Math.floor(Math.random()*items.length)];const d=document.createElement('div');d.className='si '+it.r;d.innerHTML=`<span class="sie">${it.e}</span><span class="sin">${it.n}</span>`;strip.appendChild(d);}
-  const fx=-(38*97)+(window.innerWidth/2)-45;
-  strip.animate([{transform:'translateX(0)'},{transform:`translateX(${fx}px)`}],{duration:3800,easing:'cubic-bezier(0.12,0.85,0.3,1)',fill:'forwards'}).onfinish=()=>{
+  const wonItem=_weightedPick(items);
+  const winnerIdx=38; // позиция "победителя" на полосе
+
+  // Наполняем полосу
+  for(let i=0;i<52;i++){
+    const it=(i===winnerIdx)?wonItem:items[Math.floor(Math.random()*items.length)];
+    const d=document.createElement('div');
+    d.className='si '+it.r;
+    d.innerHTML=`<span class="sie">${it.e}</span><span class="sin">${it.n}</span>`;
+    strip.appendChild(d);
+  }
+
+  // Смещение: центрируем winnerIdx
+  const itemW=97; // ширина элемента + gap
+  const viewCx=window.innerWidth/2;
+  const winnerCx=(winnerIdx+0.5)*itemW;
+  const fx=viewCx-winnerCx-2; // небольшой рандом для реализма
+  const fxFinal=fx+(Math.random()-0.5)*30;
+
+  strip.animate([{transform:'translateX(0)'},{transform:`translateX(${fxFinal}px)`}],
+    {duration:3800,easing:'cubic-bezier(0.12,0.85,0.3,1)',fill:'forwards'}).onfinish=()=>{
+    // Списываем баланс
+    BAL-=CP[cid];
+    // Если Stars-приз — начисляем на клиенте (бот синхронизирует при следующем открытии)
+    const isStars=wonItem.n.includes('Stars');
+    if(isStars) BAL+=wonItem.v;
+    updateHdr();
+
+    // Показываем результат в overlay
     ovT.textContent='';
-    document.getElementById('wE').textContent='⏳';
-    document.getElementById('wN').textContent='Обработка...';
-    document.getElementById('wR').textContent='Бот считает результат';document.getElementById('wR').style.color='var(--t3)';
-    document.getElementById('wV').textContent='';
+    const colMap={common:'var(--t2)',rare:'var(--acc)',epic:'var(--pur)',legendary:'var(--gld)'};
+    const itemCol=colMap[wonItem.r]||'var(--t1)';
+    document.getElementById('wE').textContent=wonItem.e;
+    document.getElementById('wN').textContent=wonItem.n;
+    document.getElementById('wN').style.color=itemCol;
+    document.getElementById('wR').textContent=RN[wonItem.r];
+    document.getElementById('wR').style.color=itemCol;
+    document.getElementById('wV').textContent=isStars?('+'+fmt(wonItem.v)+' ⭐ начислено'):'🎁 NFT будет отправлен ботом';
+    document.getElementById('wV').style.color=isStars?'var(--grn)':'var(--pur)';
     wRes.style.display='flex';wRes.style.flexDirection='column';wRes.style.alignItems='center';
     cl.style.display='block';
-    BAL-=CP[cid];updateHdr();
+    hint.textContent='Бот подтвердит и зачтёт в статистику';
+
+    if(wonItem.r==='legendary'||wonItem.r==='epic')confetti();
+    notif(wonItem.r==='legendary'||wonItem.r==='epic'?'success':'warning');
+
+    // Отправляем боту для записи в БД
     send({action:'open_case',case_id:cid});
   };
 }
 function closeOv(){document.getElementById('cOv').classList.remove('on');}
 
-// ══════ ROULETTE
+// ══════ ROULETTE — реальные данные из URL
 function updateRouUI(){
   document.getElementById('rBank').textContent=fmt(rBank)+' ⭐';
   document.getElementById('rPlayers').textContent=rPlayers.length||0;
@@ -1291,7 +1313,20 @@ function updateRouUI(){
 function renderRPlayers(){
   const el=document.getElementById('rList');
   if(!rPlayers.length){el.innerHTML='<div class="empty">Пока никто не поставил</div>';return;}
-  el.innerHTML=rPlayers.map((p,i)=>{const col=WC[i%WC.length];return`<div class="prow"><div style="flex:1"><div class="prn" style="color:${col}">${p.name===UNAME?'<b>'+p.name+'</b>':p.name}</div><div class="pbw"><div class="pb" style="width:${p.pct}%;background:${col}"></div></div></div><div style="text-align:right;margin-left:10px;"><div class="prb">${fmt(p.bet)} ⭐</div><div class="prp">${p.pct}%</div></div></div>`;}).join('');
+  el.innerHTML=rPlayers.map((p,i)=>{
+    const col=WC[i%WC.length];
+    const isMe=p.name===UNAME||p.name===USERNAME;
+    return`<div class="prow">
+      <div style="flex:1">
+        <div class="prn" style="color:${col}">${isMe?'<b>👤 '+p.name+'</b>':p.name}</div>
+        <div class="pbw"><div class="pb" style="width:${p.pct}%;background:${col}"></div></div>
+      </div>
+      <div style="text-align:right;margin-left:10px;">
+        <div class="prb">${fmt(p.bet)} ⭐</div>
+        <div class="prp">${p.pct}%</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 function drawWheel(){
   const canvas=document.getElementById('wheel'),ctx=canvas.getContext('2d'),cx=125,cy=125,R=121;
@@ -1315,18 +1350,29 @@ function drawWheel(){
   });
   ctx.beginPath();ctx.arc(cx,cy,22,0,Math.PI*2);ctx.fillStyle='#060d14';ctx.fill();
   ctx.strokeStyle='rgba(0,212,255,.35)';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle='var(--acc)';ctx.font='bold 14px Orbitron';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('⭐',cx,cy);
+  ctx.fillStyle='#00d4ff';ctx.font='bold 14px Orbitron';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('⭐',cx,cy);
 }
-setInterval(()=>{if(rSec>0){rSec--;const mm=Math.floor(rSec/60),ss=String(rSec%60).padStart(2,'0');const te=document.getElementById('rTmr');te.textContent=mm+':'+ss;te.style.color=rSec<30?'var(--red)':'var(--acc)';}},1000);
+setInterval(()=>{
+  if(rSec>0){
+    rSec--;
+    const mm=Math.floor(rSec/60),ss=String(rSec%60).padStart(2,'0');
+    const te=document.getElementById('rTmr');
+    if(te){te.textContent=mm+':'+ss;te.style.color=rSec<30?'var(--red)':'var(--acc)';}
+  }
+},1000);
 function setR(v){document.getElementById('rInp').value=v;}
 function placeR(){
   const amt=parseInt(document.getElementById('rInp').value);
   if(!amt||amt<1){toast('Введите сумму','var(--red)');return;}
   if(amt>500000){toast('Макс. 500 000 ⭐','var(--red)');return;}
   if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
-  BAL-=amt;rBank+=amt;rMyBet+=amt;rMyPct=Math.round(rMyBet/rBank*100*10)/10;
+  BAL-=amt;rBank+=amt;rMyBet+=amt;
+  rMyPct=Math.round(rMyBet/rBank*100*10)/10;
   updateHdr();document.getElementById('rInp').value='';
-  let found=false;rPlayers.forEach(p=>{if(p.name===UNAME){p.bet+=amt;found=true;}});
+  let found=false;
+  rPlayers.forEach(p=>{
+    if(p.name===UNAME||p.name===USERNAME){p.bet+=amt;found=true;}
+  });
   if(!found)rPlayers.push({name:UNAME,bet:amt,pct:0});
   rPlayers.forEach(p=>{p.pct=Math.round(p.bet/rBank*100*10)/10;});
   haptic('light');updateRouUI();
@@ -1334,13 +1380,47 @@ function placeR(){
   send({action:'roulette_bet',amount:amt});
 }
 
-// ══════ INIT
-document.getElementById('tLeaders').innerHTML=`<div style="color:var(--gld)">1. ${UNAME}</div><div>2. JordanPro</div><div>3. LuckyPlayer</div>`;
-document.getElementById('tTmr').textContent='6д 23ч';
-updateHdr();updateMain();updateTasks();updateSeason();updateRouUI();
+// ══════ РОЗЫГРЫШ 10K — реальные топ-игроки из БД
+function renderLeaders(){
+  const el=document.getElementById('tLeaders');
+  if(!el)return;
+  // top_players приходит из URL (?d=...) из бота
+  const players=TOP_PLAYERS.length?TOP_PLAYERS:
+    // fallback — берём из рулеточных данных
+    [...rPlayers].sort((a,b)=>b.bet-a.bet).slice(0,3).map(p=>({username:p.name,balance:p.bet}));
+  if(!players.length){
+    el.innerHTML='<div style="color:var(--t3);font-size:12px;">Нет данных — сыграй первым!</div>';
+    return;
+  }
+  const medals=['🥇','🥈','🥉'];
+  el.innerHTML=players.slice(0,5).map((p,i)=>{
+    const col=i===0?'var(--gld)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--t2)';
+    const name=p.username||'Аноним';
+    const val=p.balance!==undefined?fmt(p.balance)+' ⭐':(p.bet!==undefined?fmt(p.bet)+' ⭐':'');
+    return `<div style="display:flex;align-items:center;gap:7px;padding:4px 0;">
+      <span style="font-size:16px">${medals[i]||'  '}</span>
+      <span style="color:${col};font-weight:700;flex:1">${name}</span>
+      <span style="color:var(--acc);font-size:11px">${val}</span>
+    </div>`;
+  }).join('');
+}
 
-// Запускаем краш автоматически при открытии страницы (фоновые раунды)
-// Краш инициируется когда переходишь на страницу
+// ══════ INIT
+updateHdr();updateMain();updateTasks();updateSeason();updateRouUI();renderLeaders();
+// Таймер для турнира — показываем реальный обратный отсчёт
+(function(){
+  const el=document.getElementById('tTmr');
+  if(!el)return;
+  // Розыгрыш каждое воскресенье в 20:00
+  const now=new Date();
+  const next=new Date(now);
+  const day=now.getDay(); // 0=вс
+  const daysUntilSun=(7-day)%7||7;
+  next.setDate(now.getDate()+daysUntilSun);
+  next.setHours(20,0,0,0);
+  const diff=Math.max(0,Math.floor((next-now)/1000));
+  const d=Math.floor(diff/86400),h=Math.floor((diff%86400)/3600);
+  el.textContent=d+'д '+h+'ч';
+})();
 </script>
 </body>
-</html>
