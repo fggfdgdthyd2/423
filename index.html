@@ -340,6 +340,15 @@ canvas#crashCanvas{display:block;width:100%;height:180px;}
 .cp{position:fixed;width:7px;height:7px;border-radius:2px;pointer-events:none;animation:fall 1.8s ease-out forwards;z-index:500;}
 @keyframes fall{from{opacity:1;transform:translateY(0) rotate(0)}to{opacity:0;transform:translateY(550px) rotate(700deg)}}
 </style>
+
+<style>
+.dep-asset{background:var(--s2);border:1px solid var(--brd2);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;font-size:11px;font-weight:600;color:var(--t2);transition:.15s;}
+.dep-asset.on{border-color:var(--acc);color:var(--acc);background:rgba(0,212,255,.08);}
+.dep-asset:active{transform:scale(.96);}
+.dep-amt{background:var(--s2);border:1px solid var(--brd2);border-radius:8px;padding:10px;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;transition:.15s;}
+.dep-amt.on{border-color:var(--grn);color:var(--grn);background:rgba(0,255,136,.07);}
+.dep-amt:active{transform:scale(.96);}
+</style>
 </head>
 <body>
 
@@ -540,7 +549,7 @@ canvas#crashCanvas{display:block;width:100%;height:180px;}
     <div>
       <div class="pname" id="pName">ИГРОК</div>
       <div class="prank" id="pRank">НОВИЧОК</div>
-      <div class="pbal">Баланс: <span id="pBalTxt">0</span> ⭐ &nbsp;|&nbsp; <span style="color:var(--pur);" id="pPetTxt">0 🌸</span></div>
+      <div class="pbal"><span id="pBalTxt">$0.00</span> &nbsp;|&nbsp; <span style="color:var(--pur);" id="pPetTxt">0 🌸</span></div>
     </div>
   </div>
   <div class="sgrid">
@@ -568,7 +577,10 @@ canvas#crashCanvas{display:block;width:100%;height:180px;}
     <div class="tourt">Турнир заканчивается через: <span id="tTmr">6д 23ч</span></div>
     <div class="tourld" id="tLeaders"></div>
   </div>
-  <div class="stitle">ЗАДАНИЯ ДНЯ</div>
+  
+    <button onclick="openDeposit()" style="width:calc(100% - 28px);margin:10px 14px 0;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#00cc66,#00ff88);color:#000;font-family:Orbitron,monospace;font-size:12px;font-weight:700;letter-spacing:.8px;cursor:pointer;display:block;">
+      💳 ПОПОЛНИТЬ БАЛАНС
+    </button><div class="stitle">ЗАДАНИЯ ДНЯ</div>
   <div class="taskc"><div class="tkhdr"><div class="tkname">Дневной оборот</div><div class="tkval" id="tk1v">0/500 ⭐</div></div><div class="tkbar"><div class="tkfill" id="tk1f" style="width:0%"></div></div></div>
   <div class="taskc"><div class="tkhdr"><div class="tkname">Ставки в разных играх</div><div class="tkval" id="tk2v">0/3</div></div><div class="tkbar"><div class="tkfill" id="tk2f" style="width:0%"></div></div></div>
   <div class="taskc"><div class="tkhdr"><div class="tkname">Крупные ставки (от 100 ⭐)</div><div class="tkval" id="tk3v">0/3</div></div><div class="tkbar"><div class="tkfill" id="tk3f" style="width:0%"></div></div></div>
@@ -586,10 +598,10 @@ canvas#crashCanvas{display:block;width:100%;height:180px;}
   <div class="rbf">
     <div class="rbft">💰 Поставить в рулетку</div>
     <div class="qbs">
-      <button class="qb" onclick="setR(100)">100⭐</button>
-      <button class="qb" onclick="setR(500)">500⭐</button>
-      <button class="qb" onclick="setR(1000)">1K⭐</button>
-      <button class="qb" onclick="setR(5000)">5K⭐</button>
+      <button class="qb" onclick="setR(100)">$1</button>
+      <button class="qb" onclick="setR(500)">$5</button>
+      <button class="qb" onclick="setR(1000)">$10</button>
+      <button class="qb" onclick="setR(5000)">$50</button>
     </div>
     <div class="rinpr">
       <input class="rinp" id="rInp" type="number" placeholder="Своя сумма..." min="1" max="500000">
@@ -660,6 +672,74 @@ canvas#crashCanvas{display:block;width:100%;height:180px;}
   <button class="ovcl" id="ovCl" style="display:none;" onclick="closeOv()">✅ ЗАКРЫТЬ</button>
 </div>
 
+
+<!-- DEPOSIT OVERLAY -->
+<div id="depositOv" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;overflow-y:auto;padding:0 0 80px;">
+  <div style="background:linear-gradient(135deg,#0b1622,#0d1e30);border-bottom:1px solid var(--brd);padding:14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;">
+    <span onclick="closeDeposit()" style="color:var(--acc);font-size:22px;cursor:pointer;">←</span>
+    <span style="font-family:Orbitron,monospace;font-size:14px;font-weight:900;background:linear-gradient(90deg,var(--acc),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">ПОПОЛНЕНИЕ</span>
+    <span id="depBal" style="margin-left:auto;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.28);border-radius:20px;padding:4px 11px;font-size:12px;font-weight:700;color:var(--acc);">💵 $0.00</span>
+  </div>
+  <div style="padding:16px 14px;">
+    <!-- Asset selector -->
+    <div style="font-family:Orbitron,monospace;font-size:10px;color:var(--t3);letter-spacing:2px;margin-bottom:10px;">ВЫБЕРИТЕ МОНЕТУ</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;">
+      <div class="dep-asset on" id="dAsset-USDT" onclick="selAsset('USDT')"><div style="font-size:20px;">💵</div><div>USDT</div></div>
+      <div class="dep-asset" id="dAsset-TON"  onclick="selAsset('TON')"><div style="font-size:20px;">💎</div><div>TON</div></div>
+      <div class="dep-asset" id="dAsset-BTC"  onclick="selAsset('BTC')"><div style="font-size:20px;">₿</div><div>BTC</div></div>
+      <div class="dep-asset" id="dAsset-ETH"  onclick="selAsset('ETH')"><div style="font-size:20px;">Ξ</div><div>ETH</div></div>
+    </div>
+    <!-- Amount selector -->
+    <div style="font-family:Orbitron,monospace;font-size:10px;color:var(--t3);letter-spacing:2px;margin-bottom:10px;">СУММА ПОПОЛНЕНИЯ</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;" id="depAmounts">
+      <button class="dep-amt on" onclick="selAmt(50)">$0.50</button>
+      <button class="dep-amt" onclick="selAmt(100)">$1.00</button>
+      <button class="dep-amt" onclick="selAmt(200)">$2.00</button>
+      <button class="dep-amt" onclick="selAmt(500)">$5.00</button>
+      <button class="dep-amt" onclick="selAmt(1000)">$10.00</button>
+      <button class="dep-amt" onclick="selAmt(2500)">$25.00</button>
+      <button class="dep-amt" onclick="selAmt(5000)">$50.00</button>
+      <button class="dep-amt" onclick="selAmt(10000)">$100.00</button>
+    </div>
+    <!-- Custom amount -->
+    <input id="depCustom" type="number" placeholder="Своя сумма в $..." min="0.20" step="0.01" 
+      style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--brd);border-radius:10px;color:var(--t1);font-size:16px;padding:10px 13px;outline:none;margin-bottom:16px;"
+      oninput="customAmt(this.value)">
+    <!-- Summary -->
+    <div id="depSummary" style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.18);border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="color:var(--t3);font-size:12px;">Сумма в USD</span>
+        <span id="dSumUsd" style="color:var(--t1);font-weight:700;">$0.50</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="color:var(--t3);font-size:12px;">Монета</span>
+        <span id="dSumAsset" style="color:var(--acc);font-weight:700;">USDT</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="color:var(--t3);font-size:12px;">Сумма в крипте</span>
+        <span id="dSumCrypto" style="color:var(--grn);font-weight:700;">0.500000 USDT</span>
+      </div>
+    </div>
+    <!-- Pay button -->
+    <button id="depPayBtn" onclick="createDeposit()" 
+      style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#00cc66,#00ff88);color:#000;font-family:Orbitron,monospace;font-size:14px;font-weight:900;letter-spacing:1px;cursor:pointer;">
+      💳 ОПЛАТИТЬ ЧЕРЕЗ @CRYPTOBOT
+    </button>
+    <!-- Status area -->
+    <div id="depStatus" style="display:none;margin-top:14px;padding:14px;border-radius:12px;text-align:center;"></div>
+    <!-- Instructions -->
+    <div style="margin-top:18px;padding:14px;background:rgba(255,255,255,.03);border-radius:12px;border:1px solid rgba(255,255,255,.06);">
+      <div style="font-size:11px;color:var(--t3);line-height:1.7;">
+        <b style="color:var(--acc);">Как пополнить:</b><br>
+        1. Выберите монету и сумму<br>
+        2. Нажмите «Оплатить» — откроется @CryptoBot<br>
+        3. Оплатите и вернитесь сюда<br>
+        4. Нажмите «Проверить оплату»<br><br>
+        ✅ Средства зачисляются автоматически в течение 30 сек.
+      </div>
+    </div>
+  </div>
+</div>
 <!-- NAV -->
 <div class="nav">
   <div class="ni on" id="n-games"  onclick="switchPage('games')"><div class="ni-ico">🎮</div>ИГРЫ</div>
@@ -689,7 +769,7 @@ let bigBets=0;
 let rPlayers=S.players||[],rBank=S.total_bank||0,rSec=S.seconds_left||180,rMyBet=S.my_bet||0,rMyPct=S.my_pct||0;
 
 // ══════ CASE DATA
-const CP={starter:100,premium:500,legend:2000,nft:5000};
+const CP={starter:100,premium:500,legend:2000,nft:5000}; // в центах
 const CI={
   starter:[
     {e:'⭐',n:'+50 Stars',    r:'common',   v:50,   w:35},
@@ -738,14 +818,18 @@ const LUCKY=['Хороший момент для Crash • темп +5%','Сер
 
 // ══════ UTILS
 function fmt(n){return Number(n).toLocaleString('ru-RU');}
+// Отображение баланса в долларах (центы → $X.XX)
+function fmtUsd(cents){return '$'+(cents/100).toFixed(2);}
+// Короткий формат: $5.00 → $5, $5.50 остаётся $5.50
+function fmtUsdShort(cents){const v=cents/100;return v===Math.floor(v)?'$'+v.toFixed(0):'$'+v.toFixed(2);}
 function getRank(g){let r=RANKS[0];for(const k of RANKS)if(g>=k.g)r=k;return r.n;}
 function toast(m,c){const t=document.createElement('div');t.className='toast';t.style.color=c||'#fff';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
 function confetti(){const col=['#ffd700','#00d4ff','#00ff88','#ff3355','#a855f7'];for(let i=0;i<45;i++)setTimeout(()=>{const el=document.createElement('div');el.className='cp';el.style.cssText=`left:${6+Math.random()*88}vw;top:${Math.random()*22}vh;background:${col[Math.floor(Math.random()*5)]};animation-duration:${1.4+Math.random()}s;animation-delay:${Math.random()*.35}s;`;document.body.appendChild(el);setTimeout(()=>el.remove(),2600);},i*20);}
 function haptic(t='light'){try{tg.HapticFeedback.impactOccurred(t);}catch(e){}}
 function notif(t='success'){try{tg.HapticFeedback.notificationOccurred(t);}catch(e){}}
-// ═══ API: fetch к боту — НЕ закрывает приложение ════════════
-// Домен Amvera вида https://<проект>-<юзер>.amvera.io — замени ниже
-const API_URL = 'https://casino-bot-fsadarefd.amvera.io/api';
+// ═══ API: fetch к боту ═══════════════════════════════════════
+// Замените URL на ваш сервер: https://<проект>.amvera.io
+const API_URL = 'https://casino-bot.amvera.io/api';
 
 // \u0417\u0430\u0433\u043e\u043b\u043e\u0432\u043a\u0438 \u2014 \u0432\u0441\u0435\u0433\u0434\u0430 \u043f\u0435\u0440\u0435\u0434\u0430\u0451\u043c uid \u0434\u0432\u0443\u043c\u044f \u0441\u043f\u043e\u0441\u043e\u0431\u0430\u043c\u0438
 function _apiHeaders() {
@@ -812,7 +896,7 @@ function mx(id){document.getElementById(id).value=BAL;}
 
 // ══════ HEADER
 function updateHdr(){
-  document.getElementById('balChip').textContent='⭐ '+fmt(BAL);
+  document.getElementById('balChip').textContent='💵 '+fmtUsd(BAL);
   document.getElementById('petChip').textContent='🌸 '+PETS;
 }
 
@@ -829,7 +913,7 @@ function showGame(g){
   document.querySelectorAll('.ni').forEach(e=>e.classList.remove('on'));
   document.getElementById('pg-'+g).classList.add('on');
   document.getElementById('n-games').classList.add('on');
-  const b=fmt(BAL)+' ⭐';
+  const b=fmtUsd(BAL);
   if(g==='crash'){document.getElementById('crashBal').textContent=b;initCrash();}
   if(g==='mines'){document.getElementById('mBal').textContent=b;buildMGrid();}
   if(g==='baccarat'){document.getElementById('bacBal').textContent=b;initBac();}
@@ -843,9 +927,9 @@ function updateMain(){
   const rank=getRank(GAMES);
   document.getElementById('pName').textContent=USERNAME;
   document.getElementById('pRank').textContent=rank;
-  document.getElementById('pBalTxt').textContent=fmt(BAL);
+  document.getElementById('pBalTxt').textContent=fmtUsd(BAL);
   document.getElementById('pPetTxt').textContent=PETS+' 🌸';
-  document.getElementById('sBal').textContent=fmt(BAL);
+  document.getElementById('sBal').textContent=fmtUsd(BAL);
   document.getElementById('sGames').textContent=fmt(GAMES);
   document.getElementById('sWins').textContent=fmt(WINS);
   document.getElementById('sLosses').textContent=fmt(LOSS);
@@ -853,10 +937,10 @@ function updateMain(){
   document.getElementById('sPets').textContent=PETS;
   document.getElementById('luckyTxt').textContent=LUCKY[Math.floor(Math.random()*LUCKY.length)];
   const sTotalBet=document.getElementById('sTotalBet');
-  if(sTotalBet)sTotalBet.textContent=fmt(TOTAL_BET);
+  if(sTotalBet)sTotalBet.textContent=fmtUsd(TOTAL_BET);
   const sProfit=document.getElementById('sProfit');
   if(sProfit){
-    sProfit.textContent=(TOTAL_WIN>=0?'+':'')+fmt(TOTAL_WIN);
+    sProfit.textContent=(TOTAL_WIN>=0?'+':'')+fmtUsd(Math.abs(TOTAL_WIN));
     sProfit.style.color=TOTAL_WIN>0?'var(--grn)':TOTAL_WIN<0?'var(--red)':'var(--t2)';
   }
   const dp=Math.min(100,Math.round(SESSION_BET/500*100));
@@ -1033,12 +1117,12 @@ function crashAct(){
   if(cState==='waiting'&&cBetting){
     const amt=parseInt(document.getElementById('cBet').value)||0;
     if(!amt||amt<1){toast('Введите ставку','var(--red)');return;}
-    if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
+    if(amt>BAL){toast('❌ Недостаточно средств!','var(--red)');return;}
     cBetAmt=amt;BAL-=amt;updateHdr();haptic('medium');
     document.getElementById('cBtn').textContent='СТАВКА ПРИНЯТА ✓';
     document.getElementById('cBtn').className='btn btn-dis';
     toast('Ставка '+fmt(amt)+' ⭐ принята!','var(--acc)');
-    document.getElementById('crashBal').textContent=fmt(BAL)+' ⭐';
+    document.getElementById('crashBal').textContent=fmtUsd(BAL);
   } else if(cState==='flying'&&cBetAmt>0){
     crashCash();
   } else if(cState==='idle'){
@@ -1059,7 +1143,7 @@ function crashCash(){
   document.getElementById('cLive').classList.remove('show');
   document.getElementById('cBtn').textContent='СТАВИТЬ';
   document.getElementById('cBtn').className='btn btn-g';
-  document.getElementById('crashBal').textContent=fmt(BAL)+' ⭐';
+  document.getElementById('crashBal').textContent=fmtUsd(BAL);
 }
 
 function crashBoom(){
@@ -1118,13 +1202,13 @@ function buildMGrid(){const g=document.getElementById('mgrid');g.innerHTML='';mC
 function mStart(){
   const amt=parseInt(document.getElementById('mBet').value)||0;
   if(!amt||amt<1){toast('Введите ставку','var(--red)');return;}
-  if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
+  if(amt>BAL){toast('❌ Недостаточно средств!','var(--red)');return;}
   mBetAmt=amt;BAL-=amt;updateHdr();mActive=true;mFound=0;
   mMinePos=[];while(mMinePos.length<mCnt){const p=Math.floor(Math.random()*25);if(!mMinePos.includes(p))mMinePos.push(p);}
   buildMGrid();calcMM();
   document.getElementById('mStart').style.display='none';
   document.getElementById('mCash').style.display='block';
-  document.getElementById('mBal').textContent=fmt(BAL)+' ⭐';
+  document.getElementById('mBal').textContent=fmtUsd(BAL);
   haptic('medium');toast('Игра! Мин скрыто: '+mCnt,'var(--acc)');
 }
 function mClick(idx){
@@ -1150,7 +1234,7 @@ function mCash(){
   const win=Math.floor(mBetAmt*mult);BAL+=win;
   document.getElementById('mStart').style.display='block';
   document.getElementById('mCash').style.display='none';
-  document.getElementById('mBal').textContent=fmt(BAL)+' ⭐';
+  document.getElementById('mBal').textContent=fmtUsd(BAL);
   const profit=win-mBetAmt;
   if(profit>0)confetti();
   toast('💎 ×'+mult.toFixed(2)+' → '+(profit>0?'+':'')+fmt(profit)+' ⭐','var(--grn)');
@@ -1177,10 +1261,10 @@ function startBTimer(){
 function bacBet(type){
   const amt=parseInt(document.getElementById('bacBet').value)||0;
   if(!amt||amt<1){toast('Введите ставку','var(--red)');return;}
-  if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
+  if(amt>BAL){toast('❌ Недостаточно средств!','var(--red)');return;}
   if(bPhase!=='betting'){toast('Приём ставок закрыт','var(--red)');return;}
   bBetType=type;bBetAmt=amt;BAL-=amt;updateHdr();haptic('light');
-  document.getElementById('bacBal').textContent=fmt(BAL)+' ⭐';
+  document.getElementById('bacBal').textContent=fmtUsd(BAL);
   toast('Ставка: '+{player:'Игрок',banker:'Банкир',tie:'Ничья',ppair:'Пара Игрока',bpair:'Пара Банкира'}[type],'var(--acc)');
 }
 function dealBac(){
@@ -1205,7 +1289,7 @@ function dealBac(){
     res.style.display='block';res.style.color=match?'var(--grn)':'var(--red)';
     const profit=win-bBetAmt;
     res.textContent=match?'🎉 ПОБЕДА! +'+(profit>0?fmt(profit):fmt(win))+' ⭐':'😔 Проигрыш −'+fmt(bBetAmt)+' ⭐';
-    document.getElementById('bacBal').textContent=fmt(BAL)+' ⭐';
+    document.getElementById('bacBal').textContent=fmtUsd(BAL);
     apiCall({action:'game_result',game:'baccarat',bet:bBetAmt,win:match?win:0});
     recordGame(bBetAmt,match?win:0,'baccarat');
   }
@@ -1228,10 +1312,10 @@ function resetBJ(){bjPh='idle';bjP=[];bjD=[];document.getElementById('bjActs').i
 function bjDeal(){
   const amt=parseInt(document.getElementById('bjBet').value)||0;
   if(!amt||amt<1){toast('Введите ставку','var(--red)');return;}
-  if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
+  if(amt>BAL){toast('❌ Недостаточно средств!','var(--red)');return;}
   bjBt=amt;BAL-=amt;updateHdr();bjMkDk();
   bjP=[bjDk.pop(),bjDk.pop()];bjD=[bjDk.pop(),bjDk.pop()];bjPh='playing';renderBJ();haptic('medium');
-  document.getElementById('bjBal').textContent=fmt(BAL)+' ⭐';
+  document.getElementById('bjBal').textContent=fmtUsd(BAL);
   document.getElementById('bjActs').innerHTML='<button class="bja hit" onclick="bjHit()">✅ ВЗЯТЬ</button><button class="bja stand" onclick="bjStand()">🛑 ХВАТИТ</button>';
   document.getElementById('bjRes').style.display='none';
   if(bjV(bjP)===21){toast('🌟 Blackjack!','var(--gld)');setTimeout(()=>bjStand(),800);}
@@ -1244,7 +1328,7 @@ function bjEnd(r){
   else if(r==='win'){win=bjBt*2;BAL+=win;msg='🎉 ПОБЕДА! +'+fmt(bjBt)+' ⭐ чистыми';notif('success');confetti();}
   else if(r==='push'){win=bjBt;BAL+=win;msg='😐 Ничья — возврат '+fmt(bjBt)+' ⭐';}
   else{msg='😔 Проигрыш −'+fmt(bjBt)+' ⭐';}
-  document.getElementById('bjBal').textContent=fmt(BAL)+' ⭐';
+  document.getElementById('bjBal').textContent=fmtUsd(BAL);
   const el=document.getElementById('bjRes');el.style.display='block';
   el.style.color=r==='win'?'var(--grn)':r==='push'?'var(--gld)':'var(--red)';el.textContent=msg;
   document.getElementById('bjActs').innerHTML='<button class="bja deal" onclick="resetBJ();bjDeal();" style="grid-column:1/-1;">СНОВА</button>';
@@ -1266,7 +1350,7 @@ function showCaseDetail(cid){
   document.getElementById('cdTitle').textContent=info.name;
   document.getElementById('cdIco').textContent=info.ico;
   document.getElementById('cdName').textContent=info.name+' КЕЙС';
-  document.getElementById('cdPrice').textContent=fmt(info.price)+' ⭐';
+  document.getElementById('cdPrice').textContent=fmtUsd(info.price);
   const order={legendary:0,epic:1,rare:2,common:3};
   const sorted=[...items].sort((a,b)=>order[a.r]-order[b.r]);
   document.getElementById('cdItems').innerHTML=sorted.map(item=>{
@@ -1359,7 +1443,7 @@ function openCase(cid){
       // BAL и PETS уже обновились внутри apiCall()
     } else if (!res.ok) {
       // Если сервер вернул ошибку (например insufficient) — откатываем
-      toast(res.error === 'insufficient' ? '❌ Недостаточно Stars!' : '❌ Ошибка сервера', 'var(--red)');
+      toast(res.error === 'insufficient' ? '❌ Недостаточно средств!' : '❌ Ошибка сервера', 'var(--red)');
       ov.classList.remove('on');
       return;
     }
@@ -1383,7 +1467,7 @@ function openCase(cid){
 
     wRes.style.display='flex'; wRes.style.flexDirection='column'; wRes.style.alignItems='center';
     cl.style.display='block';
-    hint.textContent = '💰 Баланс: ' + fmt(BAL) + ' ⭐';
+    hint.textContent = '💵 Баланс: ' + fmtUsd(BAL);
 
     if (displayItem.r==='legendary' || displayItem.r==='epic') confetti();
     notif(displayItem.r==='legendary' || displayItem.r==='epic' ? 'success' : 'warning');
@@ -1393,7 +1477,7 @@ function closeOv(){document.getElementById('cOv').classList.remove('on');}
 
 // ══════ ROULETTE — реальные данные из URL
 function updateRouUI(){
-  document.getElementById('rBank').textContent=fmt(rBank)+' ⭐';
+  document.getElementById('rBank').textContent=fmtUsd(rBank);
   document.getElementById('rPlayers').textContent=rPlayers.length||0;
   document.getElementById('rMyPct').textContent=rMyBet>0?rMyPct+'%':'—';
   const mm=Math.floor(rSec/60),ss=String(rSec%60).padStart(2,'0');
@@ -1455,8 +1539,8 @@ function setR(v){document.getElementById('rInp').value=v;}
 function placeR(){
   const amt=parseInt(document.getElementById('rInp').value);
   if(!amt||amt<1){toast('Введите сумму','var(--red)');return;}
-  if(amt>500000){toast('Макс. 500 000 ⭐','var(--red)');return;}
-  if(amt>BAL){toast('❌ Недостаточно Stars!','var(--red)');return;}
+  if(amt>50000){toast('Макс. $500.00','var(--red)');return;}
+  if(amt>BAL){toast('❌ Недостаточно средств!','var(--red)');return;}
   BAL-=amt;rBank+=amt;rMyBet+=amt;
   rMyPct=Math.round(rMyBet/rBank*100*10)/10;
   updateHdr();document.getElementById('rInp').value='';
@@ -1467,7 +1551,7 @@ function placeR(){
   if(!found)rPlayers.push({name:UNAME,bet:amt,pct:0});
   rPlayers.forEach(p=>{p.pct=Math.round(p.bet/rBank*100*10)/10;});
   haptic('light');updateRouUI();
-  toast('✅ Поставлено '+fmt(amt)+' ⭐','var(--grn)');
+  toast('✅ Поставлено '+fmtUsd(amt)+','var(--grn)');
   apiCall({action:'roulette_bet',amount:amt}).then(res=>{
     if(res.ok){
       rMyBet=res.my_bet??rMyBet;
@@ -1475,7 +1559,7 @@ function placeR(){
       rBank=res.total_bank??rBank;
       updateRouUI();
     } else if(res.error==='insufficient'){
-      toast('❌ Недостаточно Stars!','var(--red)');
+      toast('❌ Недостаточно средств!','var(--red)');
       // откат локального состояния
       rBank-=amt;
       rPlayers.forEach(p=>{if(p.name===UNAME||p.name===USERNAME)p.bet-=amt;});
@@ -1500,7 +1584,7 @@ function renderLeaders(){
   el.innerHTML=players.slice(0,5).map((p,i)=>{
     const col=i===0?'var(--gld)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--t2)';
     const name=p.username||'Аноним';
-    const val=p.balance!==undefined?fmt(p.balance)+' ⭐':(p.bet!==undefined?fmt(p.bet)+' ⭐':'');
+    const val=p.balance!==undefined?fmtUsd(p.balance):(p.bet!==undefined?fmtUsd(p.bet):'');
     return `<div style="display:flex;align-items:center;gap:7px;padding:4px 0;">
       <span style="font-size:16px">${medals[i]||'  '}</span>
       <span style="color:${col};font-weight:700;flex:1">${name}</span>
@@ -1513,6 +1597,10 @@ function renderLeaders(){
 updateHdr();updateMain();updateTasks();updateSeason();updateRouUI();renderLeaders();
 // Синхронизируем баланс с сервером при каждом открытии
 syncState();
+// Автооткрытие страницы пополнения если передан параметр
+if(new URLSearchParams(window.location.search).get('page')==='deposit'){
+  setTimeout(openDeposit, 500);
+}
 // Таймер для турнира — показываем реальный обратный отсчёт
 (function(){
   const el=document.getElementById('tTmr');
@@ -1528,5 +1616,131 @@ syncState();
   const d=Math.floor(diff/86400),h=Math.floor((diff%86400)/3600);
   el.textContent=d+'д '+h+'ч';
 })();
+
+// ══════ DEPOSIT PAGE ══════════════════════════════════════════
+let depAsset = 'USDT';
+let depCents = 50; // $0.50 default
+let depInvoiceId = null;
+
+const CRYPTO_RATES = {USDT:1.0, TON:6.5, BTC:65000, ETH:3500};
+
+function openDeposit(){
+  document.getElementById('depositOv').style.display='block';
+  document.getElementById('depBal').textContent='💵 '+fmtUsd(BAL);
+  updateDepSummary();
+  haptic('light');
+}
+function closeDeposit(){
+  document.getElementById('depositOv').style.display='none';
+  depInvoiceId=null;
+  document.getElementById('depStatus').style.display='none';
+  document.getElementById('depPayBtn').style.display='block';
+}
+function selAsset(a){
+  depAsset=a;
+  document.querySelectorAll('.dep-asset').forEach(el=>el.classList.remove('on'));
+  document.getElementById('dAsset-'+a).classList.add('on');
+  updateDepSummary();
+  haptic('light');
+}
+function selAmt(cents){
+  depCents=cents;
+  document.getElementById('depCustom').value='';
+  document.querySelectorAll('.dep-amt').forEach(el=>el.classList.remove('on'));
+  event.target.classList.add('on');
+  updateDepSummary();
+  haptic('light');
+}
+function customAmt(val){
+  const usd=parseFloat(val)||0;
+  depCents=Math.round(usd*100);
+  document.querySelectorAll('.dep-amt').forEach(el=>el.classList.remove('on'));
+  updateDepSummary();
+}
+function updateDepSummary(){
+  const usd=depCents/100;
+  const rate=CRYPTO_RATES[depAsset]||1;
+  const crypto=(usd/rate);
+  const fmt_c=depAsset==='USDT'?crypto.toFixed(2):depAsset==='TON'?crypto.toFixed(4):crypto.toFixed(8);
+  document.getElementById('dSumUsd').textContent='$'+usd.toFixed(2);
+  document.getElementById('dSumAsset').textContent=depAsset;
+  document.getElementById('dSumCrypto').textContent=fmt_c+' '+depAsset;
+}
+async function createDeposit(){
+  if(depCents<20){toast('❌ Минимум $0.20','var(--red)');return;}
+  const btn=document.getElementById('depPayBtn');
+  btn.textContent='⏳ Создаём инвойс...';btn.disabled=true;
+  try{
+    const res=await apiCall({action:'create_deposit',asset:depAsset,amount_cents:depCents});
+    if(res.ok){
+      depInvoiceId=res.invoice_id;
+      // Открываем CryptoBot для оплаты
+      tg.openLink(res.pay_url);
+      // Показываем кнопку проверки
+      btn.style.display='none';
+      const st=document.getElementById('depStatus');
+      st.style.display='block';
+      st.style.background='rgba(0,212,255,.08)';
+      st.style.border='1px solid rgba(0,212,255,.28)';
+      st.innerHTML=`
+        <div style="color:var(--acc);font-weight:700;margin-bottom:10px;">💳 Счёт создан!</div>
+        <div style="color:var(--t2);font-size:12px;margin-bottom:12px;">
+          Оплатите в @CryptoBot, затем нажмите кнопку ниже
+        </div>
+        <button onclick="checkDeposit()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--acc2),var(--acc));color:#000;font-family:Orbitron,monospace;font-size:12px;font-weight:700;cursor:pointer;">
+          ✅ ПРОВЕРИТЬ ОПЛАТУ
+        </button>
+        <div style="margin-top:8px;">
+          <a href="${res.pay_url}" style="color:var(--acc);font-size:11px;" onclick="tg.openLink('${res.pay_url}');return false;">
+            🔗 Открыть ссылку оплаты снова
+          </a>
+        </div>`;
+    } else {
+      toast('❌ Ошибка: '+(res.error||'unknown'),'var(--red)');
+      btn.textContent='💳 ОПЛАТИТЬ ЧЕРЕЗ @CRYPTOBOT';btn.disabled=false;
+    }
+  } catch(e){
+    toast('❌ Ошибка соединения','var(--red)');
+    btn.textContent='💳 ОПЛАТИТЬ ЧЕРЕЗ @CRYPTOBOT';btn.disabled=false;
+  }
+}
+async function checkDeposit(){
+  if(!depInvoiceId){toast('Нет активного инвойса','var(--red)');return;}
+  const st=document.getElementById('depStatus');
+  st.innerHTML='<div style="color:var(--t2);">⏳ Проверяем оплату...</div>';
+  try{
+    const res=await apiCall({action:'check_deposit',invoice_id:depInvoiceId});
+    if(res.ok && res.status==='paid'){
+      BAL=res.balance||BAL;
+      updateHdr();
+      st.style.background='rgba(0,255,136,.08)';
+      st.style.border='1px solid rgba(0,255,136,.28)';
+      st.innerHTML=`
+        <div style="color:var(--grn);font-size:22px;margin-bottom:8px;">✅</div>
+        <div style="color:var(--grn);font-weight:700;margin-bottom:6px;">Оплата подтверждена!</div>
+        <div style="color:var(--t2);font-size:12px;">💵 Новый баланс: <b>${fmtUsd(BAL)}</b></div>`;
+      confetti();notif('success');haptic('heavy');
+      depInvoiceId=null;
+    } else if(res.status==='pending'){
+      st.innerHTML=`
+        <div style="color:var(--gld);margin-bottom:10px;">⏳ Оплата ещё не поступила</div>
+        <div style="color:var(--t3);font-size:11px;margin-bottom:12px;">Попробуйте через 10-30 секунд</div>
+        <button onclick="checkDeposit()" style="width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--acc2),var(--acc));color:#000;font-family:Orbitron,monospace;font-size:12px;font-weight:700;cursor:pointer;">
+          🔄 ПРОВЕРИТЬ СНОВА
+        </button>`;
+    } else {
+      st.innerHTML='<div style="color:var(--red);">❌ Ошибка проверки</div>';
+    }
+  } catch(e){
+    st.innerHTML='<div style="color:var(--red);">❌ Ошибка соединения</div>';
+  }
+}
+// Автопроверка каждые 15 сек если есть активный инвойс
+setInterval(()=>{
+  if(depInvoiceId && document.getElementById('depositOv').style.display==='block'){
+    checkDeposit();
+  }
+},15000);
+
 </script>
 </body>
