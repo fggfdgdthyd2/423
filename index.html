@@ -743,40 +743,25 @@ function toast(m,c){const t=document.createElement('div');t.className='toast';t.
 function confetti(){const col=['#ffd700','#00d4ff','#00ff88','#ff3355','#a855f7'];for(let i=0;i<45;i++)setTimeout(()=>{const el=document.createElement('div');el.className='cp';el.style.cssText=`left:${6+Math.random()*88}vw;top:${Math.random()*22}vh;background:${col[Math.floor(Math.random()*5)]};animation-duration:${1.4+Math.random()}s;animation-delay:${Math.random()*.35}s;`;document.body.appendChild(el);setTimeout(()=>el.remove(),2600);},i*20);}
 function haptic(t='light'){try{tg.HapticFeedback.impactOccurred(t);}catch(e){}}
 function notif(t='success'){try{tg.HapticFeedback.notificationOccurred(t);}catch(e){}}
-// ═══ API sync — fetch к боту, НЕ закрывает приложение ════════
-// ⚠️  ЗАМЕНИТЕ на IP/домен вашего сервера где запущен bot.py!
-// Порт 8080 (API_PORT в bot.py)
-// Пример: 'http://123.45.67.89:8080/api'
-const API_URL = 'http://188.19.32.19:8080/api';
+// ═══ SYNC: Telegram Bot API sendMessage — НЕ закрывает приложение ══════════
+const TG_BOT_TOKEN = '8614194395:AAHOZwJR8-CSobQqOLV8c3AOvPVhNKAj8Gc';
 
 async function send(d) {
+  const uid = ME && ME.id ? ME.id : 0;
+  if (!uid) return;
   try {
-    const uid   = (ME && ME.id) ? String(ME.id) : '0';
-    const uname = (ME && ME.username) ? ME.username : (ME && ME.first_name ? ME.first_name : 'Игрок');
-    const resp  = await fetch(API_URL, {
-      method:  'POST',
-      headers: {
-        'Content-Type':          'application/json',
-        'X-Telegram-User-Id':    uid,
-        'X-Telegram-Username':   uname,
-      },
-      body: JSON.stringify(d),
+    const text = '__gd__:' + JSON.stringify(d);
+    await fetch('https://api.telegram.org/bot' + TG_BOT_TOKEN + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: uid,
+        text: text,
+        disable_notification: true,
+      }),
     });
-    const res = await resp.json();
-    // Синхронизируем баланс из ответа сервера
-    if (res && res.ok && res.balance !== undefined) {
-      BAL = res.balance;
-      updateHdr();
-      document.getElementById('crashBal') && (document.getElementById('crashBal').textContent = fmt(BAL)+' ⭐');
-      document.getElementById('mBal')     && (document.getElementById('mBal').textContent     = fmt(BAL)+' ⭐');
-      document.getElementById('bacBal')   && (document.getElementById('bacBal').textContent   = fmt(BAL)+' ⭐');
-      document.getElementById('bjBal')    && (document.getElementById('bjBal').textContent    = fmt(BAL)+' ⭐');
-    }
-    return res;
   } catch(e) {
-    // Тихо логируем — не мешаем игре
-    console.warn('sync error:', e.message);
-    return null;
+    console.warn('sync:', e.message);
   }
 }
 function mb(id,m){const el=document.getElementById(id);el.value=Math.max(1,Math.floor((parseFloat(el.value)||10)*m));}
